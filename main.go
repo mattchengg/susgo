@@ -252,30 +252,32 @@ func download() {
 		os.Exit(1)
 	}
 
+	// Create async progress bar
+	bar := NewProgressBar(size)
+	bar.SetCurrent(offset)
+	bar.Start()
+
 	buf := make([]byte, 32768)
-	downloaded, lastPct := offset, -1
 
 	for {
 		n, err := resp.Body.Read(buf)
 		if n > 0 {
 			fd.Write(buf[:n])
-			downloaded += int64(n)
-			if pct := int(downloaded * 100 / size); pct != lastPct {
-				fmt.Printf("\r%d%%", pct)
-				lastPct = pct
-			}
+			bar.Add(int64(n))
 		}
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
 			fd.Close()
+			bar.Finish()
 			fmt.Fprintf(os.Stderr, "\nError: %v\n", err)
 			os.Exit(1)
 		}
 	}
 	fd.Close()
-	fmt.Println("\nDone.")
+	bar.Finish()
+	fmt.Println("Done.")
 	autoDecrypt(out, filename, effectiveIMEI)
 }
 
