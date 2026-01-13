@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type VersionXML struct {
@@ -37,7 +38,9 @@ func getLatestVersion(model, region string) (string, error) {
 	}
 	req.Header.Set("User-Agent", "Kies2.0_FUS")
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: 3 * time.Second,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
