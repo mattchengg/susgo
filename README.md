@@ -1,6 +1,16 @@
 # susgo
 
-Samsung firmware downloader
+Samsung firmware downloader - pure Go implementation
+
+## Features
+
+- Download firmware for Samsung devices
+- List all available firmware versions
+- Supports Standard CSCs and EUX/EUY regions  
+- IMEI/TAC generator for FUS requests
+- Auto-decrypt after download
+- Resume interrupted downloads
+- Single binary, no dependencies
 
 ## Installation
 
@@ -8,12 +18,7 @@ Samsung firmware downloader
 go install github.com/mattchengg/susgo@latest
 ```
 
-Or build from source:
-```bash
-git clone https://github.com/mattchengg/susgo.git
-cd susgo
-go build
-```
+Or download from [Releases](https://github.com/mattchengg/susgo/releases).
 
 ## Usage
 
@@ -21,12 +26,17 @@ go build
 # Check latest firmware version
 susgo -m <model> -r <region> checkupdate
 
-# Download firmware (auto-downloads latest and decrypts)
-susgo -m <model> -r <region> -i <IMEI/TAC> download -O <output-dir>
-susgo -m <model> -r <region> -i <IMEI/TAC> download -o <output-file>
+# List all available firmware versions
+susgo -m <model> -r <region> list
+susgo -m <model> -r <region> list -l    # latest only
+susgo -m <model> -r <region> list -q    # quiet mode
+
+# Download firmware
+susgo -m <model> -r <region> -i <IMEI/TAC> download -O <dir>
+susgo -m <model> -r <region> -i <IMEI/TAC> download -v <version> -O <dir>
 
 # Decrypt encrypted firmware
-susgo -m <model> -r <region> -i <IMEI/TAC> decrypt -v <version> -I <input> -o <output>
+susgo -m <model> -r <region> -i <IMEI/TAC> decrypt -v <ver> -I <input> -o <output>
 ```
 
 ### Options
@@ -34,27 +44,9 @@ susgo -m <model> -r <region> -i <IMEI/TAC> decrypt -v <version> -I <input> -o <o
 | Flag | Description |
 |------|-------------|
 | `-m` | Device model (e.g., SM-S928B) |
-| `-r` | Device region code (e.g., EUX, XAR) |
-| `-i` | Device IMEI (15 digits) or TAC (8 digits) |
-| `-s` | Device Serial Number (for devices without IMEI) |
-
-### Download Options
-
-| Flag | Description |
-|------|-------------|
-| `-O` | Output directory |
-| `-o` | Output file |
-| `-v` | Firmware version (optional) |
-| `-M` | Show MD5 hash |
-
-### Decrypt Options
-
-| Flag | Description |
-|------|-------------|
-| `-v` | Firmware version |
-| `-I` | Input file (encrypted) |
-| `-o` | Output file (decrypted) |
-| `-V` | Encryption version (2 or 4, default 4) |
+| `-r` | Region code (e.g., EUX, XAR) |
+| `-i` | IMEI (15 digits) or TAC (8 digits) |
+| `-s` | Serial Number (for devices without IMEI) |
 
 ## Examples
 
@@ -63,15 +55,26 @@ susgo -m <model> -r <region> -i <IMEI/TAC> decrypt -v <version> -I <input> -o <o
 $ susgo -m SM-S928B -r EUX checkupdate
 S928BXXS4CYK8/S928BOXM4CYK8/S928BXXS4CYK8/S928BXXS4CYK8
 
-# Download with TAC (generates IMEI automatically)
+# List all versions
+$ susgo -m SM-S928B -r EUX list
+Model: SM-S928B  Region: EUX
+
+Latest:
+  S928BXXS4CYK8/S928BOXM4CYK8/S928BXXS4CYK8/S928BXXS4CYK8
+
+Available Upgrades:
+  S928BXXS4BYG2/S928BOXM4BYG2/... (0.45 GB)
+  ...
+
+# Download with TAC
 $ susgo -m SM-S928B -r EUX -i 35123456 download -O .
+```
 
-# Download with full IMEI
-$ susgo -m SM-S928B -r EUX -i 351234567890123 download -O .
-
-# Decrypt manually
-$ susgo -m SM-S928B -r EUX -i 351234567890123 decrypt -v VERSION -I file.enc4 -o file.zip
-``` 
 ## Credits
 
-[samloader](https://github.com/ananjaser1211/samloader/tree/master) for original python implement 
+- [samloader](https://github.com/ananjaser1211/samloader/) - Original Python implementation
+- [samloader3](https://github.com/MatrixEditor/samloader3) - Reference for list command
+
+## License
+
+GPL-3.0+

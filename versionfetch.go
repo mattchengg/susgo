@@ -5,18 +5,37 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
+
+type FirmwareSpec struct {
+	Version string
+	Size    int64
+}
+
+type VersionInfo struct {
+	Latest  FirmwareSpec
+	Upgrade []FirmwareSpec
+}
 
 type VersionXML struct {
 	XMLName  xml.Name `xml:"versioninfo"`
 	Firmware struct {
 		Version struct {
-			Latest string `xml:"latest"`
+			Latest  string `xml:"latest"`
+			Upgrade struct {
+				Value []struct {
+					Text   string `xml:",chardata"`
+					FWSize string `xml:"fwsize,attr"`
+				} `xml:"value"`
+			} `xml:"upgrade"`
 		} `xml:"version"`
 	} `xml:"firmware"`
 }
+
+var httpClient = &http.Client{Timeout: 3 * time.Second}
 
 func normalizeVerCode(vercode string) string {
 	ver := strings.Split(vercode, "/")
@@ -29,45 +48,68 @@ func normalizeVerCode(vercode string) string {
 	return strings.Join(ver, "/")
 }
 
-func getLatestVersion(model, region string) (string, error) {
+func fetchVersionXML(model, region string) ([]byte, error) {
 	url := fmt.Sprintf("https://fota-cloud-dn.ospserver.net/firmware/%s/%s/version.xml", region, model)
-
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	req.Header.Set("User-Agent", "Kies2.0_FUS")
 
-	client := &http.Client{
-		Timeout: 3 * time.Second,
-	}
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == 403 {
-		return "", fmt.Errorf("model or region not found (403)")
+		return nil, fmt.Errorf("model or region not found")
 	}
-
 	if resp.StatusCode >= 400 {
-		return "", fmt.Errorf("HTTP error: %d", resp.StatusCode)
+		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
+	return io.ReadAll(resp.Body)
+}
 
-	body, err := io.ReadAll(resp.Body)
+func getLatestVersion(model, region string) (string, error) {
+	body, err := fetchVersionXML(model, region)
 	if err != nil {
 		return "", err
 	}
 
-	var versionInfo VersionXML
-	if err := xml.Unmarshal(body, &versionInfo); err != nil {
+	var v VersionXML
+	if err := xml.Unmarshal(body, &v); err != nil {
 		return "", err
 	}
 
-	if versionInfo.Firmware.Version.Latest == "" {
-		return "", fmt.Errorf("no latest firmware available")
+	if v.Firmware.Version.Latest == "" {
+		return "", fmt.Errorf("no firmware available")
+	}
+	return normalizeVerCode(v.Firmware.Version.Latest), nil
+}
+
+func getVersionInfo(model, region string) (*VersionInfo, error) {
+	body, err := fetchVersionXML(model, region)
+	if err != nil {
+		return nil, err
 	}
 
-	return normalizeVerCode(versionInfo.Firmware.Version.Latest), nil
+	var v VersionXML
+	if err := xml.Unmarshal(body, &v); err != nil {
+		return nil, err
+	}
+
+	info := &VersionInfo{}
+	if v.Firmware.Version.Latest != "" {
+		info.Latest = FirmwareSpec{Version: normalizeVerCode(v.Firmware.Version.Latest)}
+	}
+
+	for _, u := range v.Firmware.Version.Upgrade.Value {
+		size, _ := strconv.ParseInt(u.FWSize, 10, 64)
+		info.Upgrade = append(info.Upgrade, FirmwareSpec{
+			Version: normalizeVerCode(u.Text),
+			Size:    size,
+		})
+	}
+	return info, nil
 }
