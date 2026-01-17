@@ -1,10 +1,10 @@
-# susgo
+# sfgo
 
 Samsung firmware downloader with intuitive GUI - built with Go and Fyne
 
 ## Overview
 
-susgo is a cross-platform desktop application for downloading and managing Samsung firmware files. Built with Go and the Fyne UI framework, it provides an easy-to-use graphical interface for checking firmware updates, downloading firmware files, and decrypting encrypted firmware packages.
+sfgo is a cross-platform desktop application for downloading and managing Samsung firmware files. Built with Go and the Fyne UI framework, it provides an easy-to-use graphical interface for checking firmware updates, downloading firmware files, and decrypting encrypted firmware packages.
 
 ## Features
 
@@ -39,10 +39,10 @@ susgo is a cross-platform desktop application for downloading and managing Samsu
 
 ### Option 1: Download Pre-built Binary (Recommended)
 
-Download the latest release for your platform from [Releases](https://github.com/mattchengg/susgo/releases):
-- **Windows**: `susgo.exe`
-- **macOS**: `susgo.app` (Intel and Apple Silicon)
-- **Linux**: `susgo` (AppImage or binary)
+Download the latest release for your platform from [Releases](https://github.com/mattchengg/sfgo/releases):
+- **Windows**: `sfgo.exe`
+- **macOS**: `sfgo.app` (Intel and Apple Silicon)
+- **Linux**: `sfgo` (AppImage or binary)
 
 ### Option 2: Build from Source
 
@@ -73,17 +73,17 @@ xcode-select --install
 
 ```bash
 # Clone the repository
-git clone https://github.com/mattchengg/susgo.git
-cd susgo
+git clone https://github.com/mattchengg/sfgo.git
+cd sfgo
 
 # Install dependencies
 go mod download
 
 # Build the application
-go build -o susgo
+go build -o sfgo
 
 # (Windows) Build without console window
-go build -ldflags="-H windowsgui" -o susgo.exe
+go build -ldflags="-H windowsgui" -o sfgo.exe
 ```
 
 ## Usage
@@ -91,9 +91,9 @@ go build -ldflags="-H windowsgui" -o susgo.exe
 ### Launch the Application
 
 Simply run the executable:
-- **Windows**: Double-click `susgo.exe` or run from command line
-- **Linux**: `./susgo` or double-click if executable permissions are set
-- **macOS**: Open `susgo.app` or run from terminal
+- **Windows**: Double-click `sfgo.exe` or run from command line
+- **Linux**: `./sfgo` or double-click if executable permissions are set
+- **macOS**: Open `sfgo.app` or run from terminal
 
 ### Using the GUI
 
@@ -190,16 +190,16 @@ Build for different platforms using Go's cross-compilation:
 
 ```bash
 # Windows (from Linux/macOS)
-GOOS=windows GOARCH=amd64 go build -o susgo.exe
+GOOS=windows GOARCH=amd64 go build -o sfgo.exe
 
 # macOS Intel (from Linux/Windows)
-GOOS=darwin GOARCH=amd64 go build -o susgo-mac-intel
+GOOS=darwin GOARCH=amd64 go build -o sfgo-mac-intel
 
 # macOS Apple Silicon (from Linux/Windows)
-GOOS=darwin GOARCH=arm64 go build -o susgo-mac-arm
+GOOS=darwin GOARCH=arm64 go build -o sfgo-mac-arm
 
 # Linux (from Windows/macOS)
-GOOS=linux GOARCH=amd64 go build -o susgo-linux
+GOOS=linux GOARCH=amd64 go build -o sfgo-linux
 ```
 
 ## Troubleshooting
@@ -223,14 +223,14 @@ sudo pacman -S mesa
 
 Build with the `-H windowsgui` flag to hide the console window:
 ```bash
-go build -ldflags="-H windowsgui" -o susgo.exe
+go build -ldflags="-H windowsgui" -o sfgo.exe
 ```
 
 ### macOS: "App is damaged and can't be opened"
 
 This occurs with unsigned apps. Remove the quarantine attribute:
 ```bash
-xattr -cr susgo.app
+xattr -cr sfgo.app
 ```
 
 Or right-click the app, select "Open", and click "Open" in the security dialog.
@@ -311,7 +311,7 @@ A: No, this is a third-party tool. It uses Samsung's official firmware distribut
 
 ### Project Structure
 ```
-susgo/
+sfgo/
 ├── main.go              # GUI entry point and UI logic
 ├── helpers.go           # Helper functions (IMEI, download, decrypt)
 ├── progress.go          # Progress reporting (CLI and GUI)

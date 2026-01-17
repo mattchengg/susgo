@@ -1,7 +1,7 @@
-# susgo GUI Migration - Task List
+# sfgo GUI Migration - Task List
 
 ## Overview
-This document contains specific, actionable tasks for migrating susgo from CLI to GUI. Tasks are organized by phase and dependency order.
+This document contains specific, actionable tasks for migrating sfgo from CLI to GUI. Tasks are organized by phase and dependency order.
 
 ---
 
@@ -73,7 +73,7 @@ go build
 
 **Actions**:
 1. In `printUsage()` function (lines 61-98):
-   - Remove line: `susgo -m <model> -r <region> list [-l] [-q]`
+   - Remove line: `sfgo -m <model> -r <region> list [-l] [-q]`
    - Remove from Commands section: "list         List all available firmware versions"
    - Remove entire section: "List Options:"
 2. Clean up spacing for consistency
@@ -209,10 +209,10 @@ ls -la main*.go
    ```go
    func main() {
        myApp := app.New()
-       myWindow := myApp.NewWindow("susgo - Samsung Firmware Downloader")
+       myWindow := myApp.NewWindow("sfgo - Samsung Firmware Downloader")
        
        // Placeholder content
-       content := widget.NewLabel("susgo GUI - Coming Soon")
+       content := widget.NewLabel("sfgo GUI - Coming Soon")
        
        myWindow.SetContent(content)
        myWindow.Resize(fyne.NewSize(700, 500))
@@ -223,7 +223,7 @@ ls -la main*.go
 **Verification**:
 ```bash
 go run .
-# Should open a window with "susgo GUI - Coming Soon"
+# Should open a window with "sfgo GUI - Coming Soon"
 ```
 
 ---
@@ -1061,7 +1061,7 @@ go build
 **Dependencies**: Phase 6 complete
 
 **Actions**:
-1. Build: `go build -o susgo`
+1. Build: `go build -o sfgo`
 2. Test all tabs
 3. Test file dialogs
 4. Check window rendering
@@ -1082,8 +1082,8 @@ go build
 **Dependencies**: Phase 6 complete
 
 **Actions**:
-1. Build: `go build -o susgo.exe`
-2. Or with hidden console: `go build -ldflags="-H windowsgui" -o susgo.exe`
+1. Build: `go build -o sfgo.exe`
+2. Or with hidden console: `go build -ldflags="-H windowsgui" -o sfgo.exe`
 3. Test all functionality
 4. Verify file paths work correctly (backslashes)
 
@@ -1099,7 +1099,7 @@ go build
 **Dependencies**: Phase 6 complete
 
 **Actions**:
-1. Build: `go build -o susgo`
+1. Build: `go build -o sfgo`
 2. Or create .app: `fyne package -os darwin -icon icon.png`
 3. Test all functionality
 4. Test on both Intel and Apple Silicon if possible
@@ -1119,9 +1119,9 @@ go build
 1. Create `build.sh` for Linux/Mac:
    ```bash
    #!/bin/bash
-   echo "Building susgo..."
-   go build -o susgo
-   echo "Build complete: susgo"
+   echo "Building sfgo..."
+   go build -o sfgo
+   echo "Build complete: sfgo"
    
    if command -v fyne &> /dev/null; then
        echo "Creating packaged version..."
@@ -1133,9 +1133,9 @@ go build
 2. Create `build.bat` for Windows:
    ```batch
    @echo off
-   echo Building susgo...
-   go build -ldflags="-H windowsgui" -o susgo.exe
-   echo Build complete: susgo.exe
+   echo Building sfgo...
+   go build -ldflags="-H windowsgui" -o sfgo.exe
+   echo Build complete: sfgo.exe
    ```
 
 3. Make executable: `chmod +x build.sh`
@@ -1173,9 +1173,9 @@ go build
 4. Test packaged versions
 
 **Deliverables**:
-- susgo.exe (Windows)
-- susgo.app (macOS)
-- susgo.tar.xz (Linux)
+- sfgo.exe (Windows)
+- sfgo.app (macOS)
+- sfgo.tar.xz (Linux)
 
 ---
 
@@ -1199,7 +1199,7 @@ go build
 
 **Template**:
 ```markdown
-# susgo - Samsung Firmware Downloader
+# sfgo - Samsung Firmware Downloader
 
 GUI application for downloading Samsung firmware directly from Samsung's servers.
 
@@ -1230,8 +1230,8 @@ Download from [Releases](link)
 
 #### Build
 ```bash
-git clone https://github.com/mattchengg/susgo.git
-cd susgo
+git clone https://github.com/mattchengg/sfgo.git
+cd sfgo
 go get
 go build
 ```
@@ -1459,10 +1459,10 @@ type ProgressReporter interface {
 **Commands**:
 ```bash
 # Build release versions
-GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -H windowsgui" -o release/susgo-windows-amd64.exe
-GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o release/susgo-linux-amd64
-GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o release/susgo-darwin-amd64
-GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o release/susgo-darwin-arm64
+GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -H windowsgui" -o release/sfgo-windows-amd64.exe
+GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o release/sfgo-linux-amd64
+GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o release/sfgo-darwin-amd64
+GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o release/sfgo-darwin-arm64
 
 # Generate checksums
 cd release
@@ -1488,7 +1488,7 @@ sha256sum * > checksums.txt
 
 **Release Notes Template**:
 ```markdown
-## susgo v2.0.0 - GUI Edition
+## sfgo v2.0.0 - GUI Edition
 
 Major rewrite with cross-platform GUI!
 

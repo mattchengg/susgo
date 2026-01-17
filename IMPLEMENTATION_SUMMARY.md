@@ -2,7 +2,7 @@
 
 ## Overview
 
-Three comprehensive documents have been created to guide the migration of susgo from CLI to GUI:
+Three comprehensive documents have been created to guide the migration of sfgo from CLI to GUI:
 
 1. **plan.md** - Detailed technical implementation plan (743 lines, 21 KB)
 2. **task.md** - Step-by-step task breakdown (1,557 lines, 40 KB)

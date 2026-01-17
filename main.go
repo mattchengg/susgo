@@ -605,7 +605,7 @@ func decryptFirmwareGUI(model, region, imei, version, inputFile, outputFile, enc
 
 func main() {
 	myApp := app.New()
-	myWindow := myApp.NewWindow("susgo - Samsung Firmware Downloader")
+	myWindow := myApp.NewWindow("sfgo - Samsung Firmware Downloader")
 
 	tabs := container.NewAppTabs(
 		container.NewTabItem("Check Update", makeCheckUpdateTab(myWindow)),

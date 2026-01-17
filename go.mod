@@ -1,4 +1,4 @@
-module github.com/mattchengg/susgo
+module github.com/mattchengg/sfgo
 
 go 1.25.4
 

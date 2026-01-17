@@ -1,7 +1,7 @@
-# susgo GUI Migration Implementation Plan
+# sfgo GUI Migration Implementation Plan
 
 ## Project Overview
-Transform susgo from a CLI-based Samsung firmware downloader into a cross-platform GUI application using Fyne while maintaining all existing core functionality except the "list" command.
+Transform sfgo from a CLI-based Samsung firmware downloader into a cross-platform GUI application using Fyne while maintaining all existing core functionality except the "list" command.
 
 ## Current Architecture Analysis
 
@@ -52,7 +52,7 @@ Transform susgo from a CLI-based Samsung firmware downloader into a cross-platfo
 
 5. **printUsage() function** (lines 61-98)
    - Remove list-related documentation:
-     - Line 66: `susgo -m <model> -r <region> list [-l] [-q]`
+     - Line 66: `sfgo -m <model> -r <region> list [-l] [-q]`
      - Lines 78: "list" command description
      - Lines 83-84: List Options section
 
@@ -62,7 +62,7 @@ Transform susgo from a CLI-based Samsung firmware downloader into a cross-platfo
 
 #### 2.1 Application Structure
 ```
-susgo-gui/
+sfgo-gui/
 ├── main.go          # GUI entry point with Fyne setup
 ├── gui/
 │   ├── app.go       # Main application window
@@ -82,7 +82,7 @@ susgo-gui/
 
 **Alternative Simpler Structure** (Recommended for Phase 1):
 ```
-susgo/
+sfgo/
 ├── main.go          # GUI version (replace CLI main)
 ├── gui.go           # All GUI code in one file initially
 ├── auth.go          # No changes
@@ -98,7 +98,7 @@ susgo/
 #### 2.2 GUI Components
 
 **Main Window**:
-- Title: "susgo - Samsung Firmware Downloader"
+- Title: "sfgo - Samsung Firmware Downloader"
 - Size: 700x500 pixels (default)
 - Resizable: Yes
 - Layout: Tabbed interface with 3 tabs
@@ -242,7 +242,7 @@ import (
 
 func main() {
     myApp := app.New()
-    myWindow := myApp.NewWindow("susgo - Samsung Firmware Downloader")
+    myWindow := myApp.NewWindow("sfgo - Samsung Firmware Downloader")
     
     // Create tabs
     tabs := container.NewAppTabs(
@@ -389,16 +389,16 @@ Similar structure to Download tab with:
 **Windows**:
 ```bash
 # Standard build
-go build -o susgo.exe
+go build -o sfgo.exe
 
 # With Windows GUI (no console window)
-go build -ldflags="-H windowsgui" -o susgo.exe
+go build -ldflags="-H windowsgui" -o sfgo.exe
 ```
 
 **macOS**:
 ```bash
 # Standard build
-go build -o susgo
+go build -o sfgo
 
 # Create .app bundle (requires fyne CLI tool)
 go install fyne.io/fyne/v2/cmd/fyne@latest
@@ -408,7 +408,7 @@ fyne package -os darwin -icon icon.png
 **Linux**:
 ```bash
 # Standard build
-go build -o susgo
+go build -o sfgo
 
 # May require additional system packages:
 # Debian/Ubuntu: libgl1-mesa-dev xorg-dev
@@ -418,7 +418,7 @@ go build -o susgo
 **Android**:
 ```bash
 # Requires Android SDK and NDK
-fyne package -os android -appID com.mattchengg.susgo -icon icon.png
+fyne package -os android -appID com.mattchengg.sfgo -icon icon.png
 
 # Additional considerations:
 # - File picker requires storage permissions
@@ -573,10 +573,10 @@ Drawbacks:
 - Minimum Go version: 1.19 (Fyne requirement)
 
 ### Build Artifacts
-- Windows: susgo.exe (~15-20 MB with Fyne)
-- macOS: susgo.app bundle
-- Linux: susgo binary
-- Android: susgo.apk (optional)
+- Windows: sfgo.exe (~15-20 MB with Fyne)
+- macOS: sfgo.app bundle
+- Linux: sfgo binary
+- Android: sfgo.apk (optional)
 
 ### Performance Considerations
 - Download: No performance impact (network-bound)
@@ -673,7 +673,7 @@ Drawbacks:
 
 ### Long Term
 1. Android app with mobile-optimized UI
-2. Automatic update checks for susgo itself
+2. Automatic update checks for sfgo itself
 3. Firmware changelog display
 4. Multi-language support
 5. Cloud backup integration for downloaded files
@@ -689,10 +689,10 @@ Drawbacks:
 ### B. Go Cross-Compilation
 ```bash
 # Build for different platforms
-GOOS=windows GOARCH=amd64 go build -o susgo.exe
-GOOS=darwin GOARCH=amd64 go build -o susgo-mac-intel
-GOOS=darwin GOARCH=arm64 go build -o susgo-mac-arm
-GOOS=linux GOARCH=amd64 go build -o susgo-linux
+GOOS=windows GOARCH=amd64 go build -o sfgo.exe
+GOOS=darwin GOARCH=amd64 go build -o sfgo-mac-intel
+GOOS=darwin GOARCH=arm64 go build -o sfgo-mac-arm
+GOOS=linux GOARCH=amd64 go build -o sfgo-linux
 ```
 
 ### C. Fyne Packaging Commands
@@ -707,8 +707,8 @@ fyne package -icon icon.png
 fyne package -os windows -icon icon.png
 fyne package -os darwin -icon icon.png
 fyne package -os linux -icon icon.png
-fyne package -os android -icon icon.png -appID com.mattchengg.susgo
-fyne package -os ios -icon icon.png -appID com.mattchengg.susgo
+fyne package -os android -icon icon.png -appID com.mattchengg.sfgo
+fyne package -os ios -icon icon.png -appID com.mattchengg.sfgo
 ```
 
 ### D. System Dependencies (Linux)

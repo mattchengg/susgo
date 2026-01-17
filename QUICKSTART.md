@@ -1,4 +1,4 @@
-# Quick Start Guide - susgo GUI Migration
+# Quick Start Guide - sfgo GUI Migration
 
 This is a quick reference for implementing the GUI migration. See `plan.md` for detailed technical specifications and `task.md` for complete task breakdown.
 
@@ -11,7 +11,7 @@ This is a quick reference for implementing the GUI migration. See `plan.md` for 
 ## File Structure After Migration
 
 ```
-susgo/
+sfgo/
 ├── main.go              # GUI entry point (replaces CLI)
 ├── gui.go              # Optional: separate GUI code
 ├── progress.go         # Updated: ProgressReporter interface + implementations
@@ -48,7 +48,7 @@ susgo/
 # 5. Update printUsage() to remove list documentation
 
 # Test:
-go build && ./susgo -m SM-S928B -r EUX checkupdate
+go build && ./sfgo -m SM-S928B -r EUX checkupdate
 ```
 
 ### Step 2: Install Fyne (10 minutes)
@@ -106,13 +106,13 @@ cp main.go main_cli_backup.go
 ### Step 9: Build for Distribution (30 minutes)
 ```bash
 # Linux
-go build -o susgo
+go build -o sfgo
 
 # Windows (cross-compile or on Windows)
-GOOS=windows GOARCH=amd64 go build -ldflags="-H windowsgui" -o susgo.exe
+GOOS=windows GOARCH=amd64 go build -ldflags="-H windowsgui" -o sfgo.exe
 
 # macOS
-GOOS=darwin GOARCH=amd64 go build -o susgo-mac
+GOOS=darwin GOARCH=amd64 go build -o sfgo-mac
 
 # Or use fyne package
 fyne package -os windows -icon icon.png

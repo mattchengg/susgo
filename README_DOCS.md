@@ -1,8 +1,8 @@
-# susgo GUI Migration - Documentation Index
+# sfgo GUI Migration - Documentation Index
 
 ## 📚 Document Overview
 
-This directory contains comprehensive documentation for migrating susgo from CLI to GUI:
+This directory contains comprehensive documentation for migrating sfgo from CLI to GUI:
 
 | Document | Size | Purpose | Read Time |
 |----------|------|---------|-----------|
