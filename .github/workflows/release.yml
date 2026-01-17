@@ -28,15 +28,15 @@ jobs:
 
       - name: Build for Linux
         run: |
-          fyne-cross linux -arch=amd64,arm64 -app-id=com.mattchengg.sfgo -release
+          fyne-cross linux -arch=amd64,arm64 -app-id=com.mattchengg.sfgo -release -env GOTOOLCHAIN=auto
           
       - name: Build for Windows
         run: |
-          fyne-cross windows -arch=amd64 -app-id=com.mattchengg.sfgo -release
+          fyne-cross windows -arch=amd64 -app-id=com.mattchengg.sfgo -release -env GOTOOLCHAIN=auto
 
       - name: Build for macOS
         run: |
-          fyne-cross darwin -arch=amd64,arm64 -app-id=com.mattchengg.sfgo -release
+          fyne-cross darwin -arch=amd64,arm64 -app-id=com.mattchengg.sfgo -release -env GOTOOLCHAIN=auto
 
       - name: Organize artifacts
         run: |

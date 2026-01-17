@@ -886,8 +886,8 @@ Full build test not possible in Termux due to missing OpenGL/GLES2 headers (know
 - [x] Task 10.1: Replace release.yml with Fyne-compatible workflow using fyne-cross
 - [x] Task 10.2: Test workflow syntax validity
 - [x] Task 10.3: Commit changes
+- [x] Task 10.4: Align fyne-cross builds with Go toolchain requirements (GOTOOLCHAIN=auto)
 
 **Note**: The current release workflow fails because Fyne requires CGO (CGO_ENABLED=1), but the workflow has CGO_ENABLED=0. Using fyne-cross tool which handles CGO requirements in Docker containers for cross-platform builds.
 
 **Completed**: Replaced the matrix-based build strategy with fyne-cross tool that builds for Linux (amd64, arm64), Windows (amd64), and macOS (amd64, arm64). The new workflow uses Docker containers with proper CGO setup, eliminating the CGO_ENABLED=0 issue.
-
