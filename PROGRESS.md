@@ -16,7 +16,7 @@
 
 ## Phase 2: Setup Fyne and Project Structure
 
-- [ ] Task 2.1: Add Fyne dependency
+- [x] Task 2.1: Add Fyne dependency
 - [ ] Task 2.2: Install Fyne CLI tool (optional)
 - [ ] Task 2.3: Create application icon (optional)
 
@@ -71,7 +71,7 @@
 
 ## Notes
 
-Last Updated: 2025-01-21 - Phase 1 Complete
+Last Updated: 2026-01-17 - Task 2.1 Complete
 
 ### 2025-01-21 - Phase 1: Remove List Command (Completed)
 **What was done:**
@@ -92,4 +92,23 @@ Last Updated: 2025-01-21 - Phase 1 Complete
 - ✅ List command properly rejected: `./susgo -m SM-S928B -r EUX list` shows "Unknown command: list"
 - ✅ Checkupdate command works: `./susgo -m SM-S928B -r EUX checkupdate` returns firmware version
 - ✅ Help text no longer mentions list command
+
+### 2026-01-17 11:49 - Task 2.1: Add Fyne Dependency (Completed)
+**What was done:**
+- Added Fyne v2.7.2 GUI framework dependency to the project
+- Ran `go get fyne.io/fyne/v2@latest` to install the latest version
+- Ran `go mod tidy` to ensure clean dependency management
+- Verified Fyne v2.7.2 is now present in go.mod
+- Verified go.sum contains correct checksums for Fyne package
+
+**Files Modified:**
+- go.mod: Added `require fyne.io/fyne/v2 v2.7.2 // indirect`
+- go.sum: Added Fyne package checksums
+
+**Testing:**
+- ✅ Build successful: `go build` completes without errors
+- ✅ `go vet` passes with no warnings
+- ✅ Fyne dependency correctly added: `grep fyne go.mod` shows v2.7.2
+- ✅ CLI functionality remains intact: help text displays correctly
+- ✅ Ready for Phase 3 GUI implementation
 
