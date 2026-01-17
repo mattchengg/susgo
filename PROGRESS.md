@@ -26,7 +26,7 @@
 
 - [x] Task 3.1: Backup current main.go
 - [x] Task 3.2: Create new GUI main.go skeleton
-- [ ] Task 3.3: Create makeCheckUpdateTab() function
+- [x] Task 3.3: Create makeCheckUpdateTab() function
 
 ---
 
@@ -66,6 +66,7 @@
 
 - [ ] Task 8.1: Update README.md
 - [ ] Task 8.2: Add build instructions
+- [ ] Task 8.3: Rename project name to sfgo
 
 ---
 
