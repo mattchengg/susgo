@@ -110,7 +110,8 @@ func makeCheckUpdateTab(window fyne.Window) *fyne.Container {
 				dialog.ShowError(err, window)
 				resultLabel.SetText("")
 			} else {
-				resultLabel.SetText("✅ Latest Version: " + version)
+				resultLabel.SetText("")
+				dialog.ShowInformation("Success", fmt.Sprintf("Latest version: %s\n\nModel: %s\nRegion: %s", version, model, region), window)
 			}
 		}()
 	})
@@ -219,6 +220,15 @@ func makeDownloadTab(window fyne.Window) *fyne.Container {
 				dialog.ShowError(err, window)
 			} else {
 				progress.Finish()
+				statusLabel.SetText("")
+				progressBar.Hide()
+				versionInfo := version
+				if version == "" {
+					versionInfo = "latest"
+				}
+				dialog.ShowInformation("Download Complete",
+					fmt.Sprintf("Firmware downloaded successfully!\n\nModel: %s\nRegion: %s\nVersion: %s\nLocation: %s",
+						model, region, versionInfo, outputDir), window)
 			}
 		}()
 	})
@@ -524,7 +534,10 @@ func makeDecryptTab(window fyne.Window) *fyne.Container {
 				statusLabel.SetText("")
 				dialog.ShowError(err, window)
 			} else {
-				statusLabel.SetText("✅ Decryption complete! File saved to: " + outputFile)
+				statusLabel.SetText("")
+				dialog.ShowInformation("Decryption Complete",
+					fmt.Sprintf("Firmware decrypted successfully!\n\nEncryption Version: %s\nOutput File: %s",
+						encVersion, outputFile), window)
 			}
 		}()
 	})
