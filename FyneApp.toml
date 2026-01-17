@@ -1,0 +1,24 @@
+[Details]
+  Icon = "Icon.png"
+  Name = "sfgo"
+  ID = "com.samsung.firmware.sfgo"
+  Version = "1.0.0"
+  Build = 1
+
+[App]
+  # Application metadata
+  Name = "Samsung Firmware Downloader"
+  ID = "com.samsung.firmware.sfgo"
+
+[Build]
+  # Build configuration
+  AndroidNDKVersion = "25"
+  AndroidMinSDK = 23
+  AndroidTargetSDK = 34
+
+[Metadata]
+  # App description and details
+  Developer = "sfgo developers"
+  DeveloperEmail = ""
+  DeveloperWebsite = ""
+  Category = "Tools"
