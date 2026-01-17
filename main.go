@@ -305,6 +305,181 @@ func downloadFirmware(model, region, imei, version, outputDir string, progress P
 	return nil
 }
 
+func makeDecryptTab() *fyne.Container {
+	// Create input fields
+	modelEntry := widget.NewEntry()
+	modelEntry.SetPlaceHolder("e.g., SM-S928B")
+
+	regionEntry := widget.NewEntry()
+	regionEntry.SetPlaceHolder("e.g., EUX")
+
+	imeiEntry := widget.NewEntry()
+	imeiEntry.SetPlaceHolder("8 digits (TAC) or 15 digits (full IMEI)")
+
+	versionEntry := widget.NewEntry()
+	versionEntry.SetPlaceHolder("e.g., S928BXXU1AXXX/S928BOXM1AXXX/...")
+
+	inputFileEntry := widget.NewEntry()
+	inputFileEntry.SetPlaceHolder("/path/to/firmware.enc4")
+
+	outputFileEntry := widget.NewEntry()
+	outputFileEntry.SetPlaceHolder("/path/to/output/firmware.zip")
+
+	// Encryption version selector (default to 4)
+	encVersionSelect := widget.NewSelect([]string{"2", "4"}, nil)
+	encVersionSelect.SetSelected("4")
+
+	// Status label
+	statusLabel := widget.NewLabel("")
+	statusLabel.Wrapping = fyne.TextWrapWord
+
+	// Track decrypt state
+	var decryptInProgress bool
+
+	// Decrypt button
+	decryptButton := widget.NewButton("Decrypt Firmware", func() {
+		if decryptInProgress {
+			statusLabel.SetText("⚠️ Decryption already in progress")
+			return
+		}
+
+		// Get and validate inputs
+		model := strings.TrimSpace(modelEntry.Text)
+		region := strings.TrimSpace(regionEntry.Text)
+		imei := strings.TrimSpace(imeiEntry.Text)
+		version := strings.TrimSpace(versionEntry.Text)
+		inputFile := strings.TrimSpace(inputFileEntry.Text)
+		outputFile := strings.TrimSpace(outputFileEntry.Text)
+		encVersion := encVersionSelect.Selected
+
+		// Validation
+		if model == "" {
+			statusLabel.SetText("❌ Error: Model is required")
+			return
+		}
+
+		if region == "" {
+			statusLabel.SetText("❌ Error: Region is required")
+			return
+		}
+
+		if imei == "" {
+			statusLabel.SetText("❌ Error: IMEI/TAC is required")
+			return
+		}
+
+		// Validate IMEI length
+		if len(imei) != 8 && len(imei) != 15 {
+			statusLabel.SetText("❌ Error: IMEI must be 8 or 15 digits")
+			return
+		}
+
+		if version == "" {
+			statusLabel.SetText("❌ Error: Version is required")
+			return
+		}
+
+		if inputFile == "" {
+			statusLabel.SetText("❌ Error: Input file path is required")
+			return
+		}
+
+		if outputFile == "" {
+			statusLabel.SetText("❌ Error: Output file path is required")
+			return
+		}
+
+		if encVersion == "" {
+			statusLabel.SetText("❌ Error: Encryption version is required")
+			return
+		}
+
+		// Check if input file exists
+		if _, err := os.Stat(inputFile); os.IsNotExist(err) {
+			statusLabel.SetText("❌ Error: Input file does not exist")
+			return
+		}
+
+		// Start decryption
+		decryptInProgress = true
+		decryptButton.Disable()
+		statusLabel.SetText("⏳ Starting decryption...")
+
+		// Run decryption in goroutine to keep UI responsive
+		go func() {
+			defer func() {
+				decryptInProgress = false
+				decryptButton.Enable()
+			}()
+
+			err := decryptFirmwareGUI(model, region, imei, version, inputFile, outputFile, encVersion, statusLabel)
+
+			if err != nil {
+				statusLabel.SetText("❌ Error: " + err.Error())
+			} else {
+				statusLabel.SetText("✅ Decryption complete! File saved to: " + outputFile)
+			}
+		}()
+	})
+
+	// Layout
+	form := widget.NewForm(
+		widget.NewFormItem("Model *", modelEntry),
+		widget.NewFormItem("Region *", regionEntry),
+		widget.NewFormItem("IMEI/TAC *", imeiEntry),
+		widget.NewFormItem("Version *", versionEntry),
+		widget.NewFormItem("Input File *", inputFileEntry),
+		widget.NewFormItem("Output File *", outputFileEntry),
+		widget.NewFormItem("Encryption Version *", encVersionSelect),
+	)
+
+	return container.NewVBox(
+		widget.NewLabelWithStyle("Decrypt Firmware",
+			fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		widget.NewSeparator(),
+		form,
+		decryptButton,
+		widget.NewSeparator(),
+		statusLabel,
+	)
+}
+
+// decryptFirmwareGUI implements the complete firmware decryption logic for GUI
+func decryptFirmwareGUI(model, region, imei, version, inputFile, outputFile, encVersion string, statusLabel *widget.Label) error {
+	// Step 1: Validate and parse IMEI
+	statusLabel.SetText("⏳ Validating IMEI...")
+	effectiveIMEI, err := parseIMEI(imei, "", model, region)
+	if err != nil {
+		return fmt.Errorf("invalid IMEI: %w", err)
+	}
+
+	// Step 2: Check if output file already exists
+	if _, err := os.Stat(outputFile); err == nil {
+		statusLabel.SetText("⚠️ Output file already exists, overwriting...")
+	}
+
+	// Step 3: Get decryption key based on version
+	var key []byte
+	if encVersion == "2" {
+		statusLabel.SetText("⏳ Generating V2 decryption key...")
+		key = getV2Key(version, model, region)
+	} else {
+		statusLabel.SetText("⏳ Generating V4 decryption key...")
+		key, err = getV4Key(version, model, region, effectiveIMEI)
+		if err != nil {
+			return fmt.Errorf("failed to generate V4 key: %w", err)
+		}
+	}
+
+	// Step 4: Decrypt the firmware
+	statusLabel.SetText("⏳ Decrypting firmware... This may take a while...")
+	if err := decryptFirmware(inputFile, outputFile, key, false); err != nil {
+		return fmt.Errorf("decryption failed: %w", err)
+	}
+
+	return nil
+}
+
 func main() {
 	myApp := app.New()
 	myWindow := myApp.NewWindow("susgo - Samsung Firmware Downloader")
@@ -312,6 +487,7 @@ func main() {
 	tabs := container.NewAppTabs(
 		container.NewTabItem("Check Update", makeCheckUpdateTab()),
 		container.NewTabItem("Download", makeDownloadTab()),
+		container.NewTabItem("Decrypt", makeDecryptTab()),
 	)
 
 	myWindow.SetContent(tabs)

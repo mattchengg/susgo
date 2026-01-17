@@ -40,7 +40,7 @@
 
 ## Phase 5: Implement Decrypt Tab
 
-- [ ] Task 5.1: Create makeDecryptTab() function
+- [x] Task 5.1: Create makeDecryptTab() function
 - [ ] Task 5.2: Implement file selection dialogs
 - [ ] Task 5.3: Implement decrypt logic with GUI
 
@@ -72,7 +72,7 @@
 
 ## Notes
 
-Last Updated: 2026-01-17 - Task 2.1 Complete
+Last Updated: 2026-01-17 12:20 - Task 5.1 Complete
 
 ### 2025-01-21 - Phase 1: Remove List Command (Completed)
 **What was done:**
@@ -295,5 +295,60 @@ Last Updated: 2026-01-17 - Task 2.1 Complete
 - ✅ Directory creation: Uses os.MkdirAll() to ensure output directory exists
 - ⚠️  Full compile skipped: Expected OpenGL/GLES2 native dependency limitation on Termux
 - ✅ Ready for Phase 5: Implement Decrypt Tab
+
+### 2026-01-17 12:20 - Task 5.1: Create makeDecryptTab() function (Completed)
+**What was done:**
+- Created comprehensive makeDecryptTab() function in main.go with complete UI layout
+- Implemented input fields for all required parameters:
+  - Model entry field with placeholder "e.g., SM-S928B"
+  - Region entry field with placeholder "e.g., EUX"
+  - IMEI/TAC entry field with placeholder "8 digits (TAC) or 15 digits (full IMEI)"
+  - Version entry field with placeholder "e.g., S928BXXU1AXXX/S928BOXM1AXXX/..."
+  - Input file path entry field with placeholder "/path/to/firmware.enc4"
+  - Output file path entry field with placeholder "/path/to/output/firmware.zip"
+  - Encryption version selector (dropdown) with options "2" and "4", default to "4"
+- Created status label with text wrapping for feedback messages
+- Implemented Decrypt button with comprehensive validation:
+  - Checks for all required fields (Model, Region, IMEI/TAC, Version, Input File, Output File, Encryption Version)
+  - Validates IMEI length (must be 8 or 15 digits)
+  - Checks if input file exists before starting decryption
+  - Prevents multiple simultaneous decryptions with state tracking
+  - Disables button during decryption and re-enables after completion
+  - Shows status updates via statusLabel
+- Created decryptFirmwareGUI() function for decrypt logic:
+  - Validates and parses IMEI using parseIMEI() helper from helpers.go
+  - Checks if output file already exists (warns user about overwriting)
+  - Generates decryption key based on encryption version:
+    - V2: Uses getV2Key(version, model, region) from crypt.go
+    - V4: Uses getV4Key(version, model, region, effectiveIMEI) from crypt.go
+  - Calls decryptFirmware() from crypt.go to perform actual decryption
+  - Returns descriptive errors with proper error wrapping
+  - Updates status label throughout the process
+- Updated main() function to add "Decrypt" tab to tab container
+- Used proper Fyne widgets and container layouts (VBox, Form, Select, etc.)
+- Implemented goroutine for async decryption to keep UI responsive
+- Added defer block for proper cleanup after decryption completes
+- All status messages use emoji indicators (⏳ for in-progress, ❌ for error, ✅ for success, ⚠️ for warnings)
+
+**Files Modified:**
+- main.go: Added makeDecryptTab() function, decryptFirmwareGUI() function, and Decrypt tab to main()
+- PROGRESS.md: Marked Task 5.1 as complete
+
+**Testing:**
+- ✅ Code formatting: `gofmt -l main.go` confirms proper Go formatting
+- ✅ Syntax validation: gofmt confirms main.go syntax is valid
+- ✅ Package structure: `go list` confirms no Go-level import errors
+- ✅ Function references verified to exist:
+  - parseIMEI() in helpers.go
+  - getV2Key() in crypt.go
+  - getV4Key() in crypt.go
+  - decryptFirmware() in crypt.go
+- ✅ Tab container properly configured with Check Update, Download, and Decrypt tabs
+- ✅ All validation logic in place for user inputs
+- ✅ Encryption version selector properly configured with dropdown widget
+- ✅ Status feedback mechanism in place via statusLabel updates
+- ✅ Input file existence check implemented
+- ⚠️  Full compile skipped: Expected OpenGL/GLES2 native dependency limitation on Termux
+- ✅ Ready for Task 5.2: Implement file selection dialogs
 
 
