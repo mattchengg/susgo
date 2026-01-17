@@ -74,7 +74,7 @@ func validateIMEI(imei string) error {
 	return nil
 }
 
-func makeCheckUpdateTab() *fyne.Container {
+func makeCheckUpdateTab(window fyne.Window) *fyne.Container {
 	// Create input fields
 	modelEntry := widget.NewEntry()
 	modelEntry.SetPlaceHolder("e.g., SM-S928B")
@@ -92,12 +92,12 @@ func makeCheckUpdateTab() *fyne.Container {
 
 		// Validation using helper functions
 		if err := validateModel(model); err != nil {
-			resultLabel.SetText("❌ Error: " + err.Error())
+			dialog.ShowError(err, window)
 			return
 		}
 
 		if err := validateRegion(region); err != nil {
-			resultLabel.SetText("❌ Error: " + err.Error())
+			dialog.ShowError(err, window)
 			return
 		}
 
@@ -107,7 +107,8 @@ func makeCheckUpdateTab() *fyne.Container {
 		go func() {
 			version, err := getLatestVersion(model, region)
 			if err != nil {
-				resultLabel.SetText("❌ Error: " + err.Error())
+				dialog.ShowError(err, window)
+				resultLabel.SetText("")
 			} else {
 				resultLabel.SetText("✅ Latest Version: " + version)
 			}
@@ -131,7 +132,7 @@ func makeCheckUpdateTab() *fyne.Container {
 	)
 }
 
-func makeDownloadTab() *fyne.Container {
+func makeDownloadTab(window fyne.Window) *fyne.Container {
 	// Create input fields
 	modelEntry := widget.NewEntry()
 	modelEntry.SetPlaceHolder("e.g., SM-S928B")
@@ -162,7 +163,6 @@ func makeDownloadTab() *fyne.Container {
 	// Download button
 	downloadButton := widget.NewButton("Start Download", func() {
 		if downloadInProgress {
-			statusLabel.SetText("⚠️ Download already in progress")
 			return
 		}
 
@@ -175,22 +175,22 @@ func makeDownloadTab() *fyne.Container {
 
 		// Validation using helper functions
 		if err := validateModel(model); err != nil {
-			statusLabel.SetText("❌ Error: " + err.Error())
+			dialog.ShowError(err, window)
 			return
 		}
 
 		if err := validateRegion(region); err != nil {
-			statusLabel.SetText("❌ Error: " + err.Error())
+			dialog.ShowError(err, window)
 			return
 		}
 
 		if err := validateIMEI(imei); err != nil {
-			statusLabel.SetText("❌ Error: " + err.Error())
+			dialog.ShowError(err, window)
 			return
 		}
 
 		if outputDir == "" {
-			statusLabel.SetText("❌ Error: Output directory is required")
+			dialog.ShowError(fmt.Errorf("output directory is required"), window)
 			return
 		}
 
@@ -214,8 +214,9 @@ func makeDownloadTab() *fyne.Container {
 			err := downloadFirmware(model, region, imei, version, outputDir, progress)
 
 			if err != nil {
-				statusLabel.SetText("❌ Error: " + err.Error())
 				progressBar.Hide()
+				statusLabel.SetText("")
+				dialog.ShowError(err, window)
 			} else {
 				progress.Finish()
 			}
@@ -446,7 +447,6 @@ func makeDecryptTab(window fyne.Window) *fyne.Container {
 	// Decrypt button
 	decryptButton := widget.NewButton("Decrypt Firmware", func() {
 		if decryptInProgress {
-			statusLabel.SetText("⚠️ Decryption already in progress")
 			return
 		}
 
@@ -461,43 +461,43 @@ func makeDecryptTab(window fyne.Window) *fyne.Container {
 
 		// Validation using helper functions
 		if err := validateModel(model); err != nil {
-			statusLabel.SetText("❌ Error: " + err.Error())
+			dialog.ShowError(err, window)
 			return
 		}
 
 		if err := validateRegion(region); err != nil {
-			statusLabel.SetText("❌ Error: " + err.Error())
+			dialog.ShowError(err, window)
 			return
 		}
 
 		if err := validateIMEI(imei); err != nil {
-			statusLabel.SetText("❌ Error: " + err.Error())
+			dialog.ShowError(err, window)
 			return
 		}
 
 		if version == "" {
-			statusLabel.SetText("❌ Error: Version is required")
+			dialog.ShowError(fmt.Errorf("version is required"), window)
 			return
 		}
 
 		if inputFile == "" {
-			statusLabel.SetText("❌ Error: Input file path is required")
+			dialog.ShowError(fmt.Errorf("input file path is required"), window)
 			return
 		}
 
 		if outputFile == "" {
-			statusLabel.SetText("❌ Error: Output file path is required")
+			dialog.ShowError(fmt.Errorf("output file path is required"), window)
 			return
 		}
 
 		if encVersion == "" {
-			statusLabel.SetText("❌ Error: Encryption version is required")
+			dialog.ShowError(fmt.Errorf("encryption version is required"), window)
 			return
 		}
 
 		// Check if input file exists
 		if _, err := os.Stat(inputFile); os.IsNotExist(err) {
-			statusLabel.SetText("❌ Error: Input file does not exist")
+			dialog.ShowError(fmt.Errorf("input file does not exist: %s", inputFile), window)
 			return
 		}
 
@@ -521,7 +521,8 @@ func makeDecryptTab(window fyne.Window) *fyne.Container {
 			err := decryptFirmwareGUI(model, region, imei, version, inputFile, outputFile, encVersion, progress)
 
 			if err != nil {
-				statusLabel.SetText("❌ Error: " + err.Error())
+				statusLabel.SetText("")
+				dialog.ShowError(err, window)
 			} else {
 				statusLabel.SetText("✅ Decryption complete! File saved to: " + outputFile)
 			}
@@ -594,8 +595,8 @@ func main() {
 	myWindow := myApp.NewWindow("susgo - Samsung Firmware Downloader")
 
 	tabs := container.NewAppTabs(
-		container.NewTabItem("Check Update", makeCheckUpdateTab()),
-		container.NewTabItem("Download", makeDownloadTab()),
+		container.NewTabItem("Check Update", makeCheckUpdateTab(myWindow)),
+		container.NewTabItem("Download", makeDownloadTab(myWindow)),
 		container.NewTabItem("Decrypt", makeDecryptTab(myWindow)),
 	)
 
