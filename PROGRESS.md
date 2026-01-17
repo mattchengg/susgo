@@ -67,7 +67,7 @@
 ## Phase 8: Documentation
 
 - [x] Task 8.1: Update README.md
-- [ ] Task 8.2: Add build instructions
+- [x] Task 8.2: Add build instructions
 - [ ] Task 8.3: Rename project name to sfgo
 
 ---
@@ -734,3 +734,45 @@ The GUI implementation is complete and ready for testing on proper desktop envir
 **Next Steps:**
 - Task 8.2: Add build instructions (may already be covered in README.md)
 - Task 8.3: Rename project name to sfgo (requires careful refactoring)
+
+---
+
+### 2026-01-17 14:59 - Task 8.2: Add Build Instructions (Completed)
+**What was done:**
+- Verified that comprehensive build instructions already exist in README.md (lines 48-88, 162-204)
+- Confirmed all required elements are present:
+  - ✅ Prerequisites: Platform-specific dependencies for Ubuntu/Debian, Fedora/RHEL, macOS, and Windows
+  - ✅ Go version requirement: Updated from "Go 1.19 or later" to "Go 1.25 or later (Go 1.25.4 recommended)" to match go.mod
+  - ✅ Clone repository: `git clone` command with repository URL
+  - ✅ Install dependencies: `go mod download` command
+  - ✅ Basic build: `go build -o susgo` command
+  - ✅ Platform-specific builds: Windows flag for hiding console window (`-ldflags="-H windowsgui"`)
+  - ✅ Cross-compilation: Full examples for building Windows, macOS (Intel/ARM), and Linux from any platform
+  - ✅ Fyne package tool: Installation and usage for creating platform-specific packages (.exe, .app, AppImage)
+  - ✅ Build script alternative: Documented using fyne package command
+- Build instructions are comprehensive, well-organized, and user-friendly
+- Instructions cover both simple builds and advanced packaging for distribution
+- Troubleshooting section includes common build-related issues (OpenGL errors, Windows console, macOS security)
+
+**Files Modified:**
+- README.md: Updated Go version requirement from 1.19 to 1.25 (to match go.mod)
+- PROGRESS.md: Marked Task 8.2 as complete
+
+**Verification:**
+- ✅ Prerequisites section complete: Lists all required tools and libraries per platform
+- ✅ Build commands tested: `go mod download` works, basic build fails only due to Termux/mobile environment limitations (expected)
+- ✅ Cross-compilation documented: GOOS/GOARCH examples for all platforms
+- ✅ Fyne packaging documented: `fyne package` command for creating distribution packages
+- ✅ Troubleshooting present: OpenGL/graphics library issues covered
+- ✅ Documentation matches actual requirements: Go 1.25.4 in go.mod, Fyne v2.7.2
+
+**Assessment:**
+Build instructions were already complete in README.md from Task 8.1. Only minor update needed to correct Go version requirement. The documentation now includes:
+- 6 platform-specific dependency installation commands
+- 4 basic build commands (standard, Windows no-console, macOS, Linux)
+- 4 cross-compilation examples
+- 4 fyne package commands for different platforms
+- Comprehensive enough for users to build from source on any supported platform
+
+**Next Steps:**
+- Task 8.3: Rename project name to sfgo (requires careful refactoring of imports, module name, and documentation)

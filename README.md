@@ -47,7 +47,7 @@ Download the latest release for your platform from [Releases](https://github.com
 ### Option 2: Build from Source
 
 #### Prerequisites
-- Go 1.19 or later
+- Go 1.25 or later (Go 1.25.4 recommended)
 - Platform-specific dependencies for Fyne:
 
 **Ubuntu/Debian**:
