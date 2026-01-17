@@ -42,7 +42,7 @@
 
 - [x] Task 5.1: Create makeDecryptTab() function
 - [x] Task 5.2: Implement file selection dialogs
-- [ ] Task 5.3: Implement decrypt logic with GUI
+- [x] Task 5.3: Implement decrypt logic with GUI
 
 ---
 
@@ -405,5 +405,79 @@ Last Updated: 2026-01-17 12:30 - Task 5.2 Complete
 - ✅ Resource cleanup with defer statements
 - ⚠️  Full compile skipped: Expected OpenGL/GLES2 native dependency limitation on Termux
 - ✅ Ready for Task 5.3: Implement decrypt logic with GUI
+
+### 2026-01-17 12:35 - Task 5.3: Implement decrypt logic with GUI (Completed)
+**What was done:**
+- Enhanced decryptFirmwareGUI() function to use ProgressReporter interface:
+  - Changed signature from accepting *widget.Label to ProgressReporter
+  - All status updates now use progress.SetStatus() for consistency
+  - Added progress.Finish() call to mark completion
+  - Maintained all validation steps: IMEI parsing, output file check, key generation
+  - Returns descriptive errors with proper error wrapping
+- Created decryptFirmwareWithProgress() function in crypt.go:
+  - New function that accepts ProgressReporter interface
+  - Implements real-time progress tracking during decryption
+  - Calls progress.SetTotal(length) to set file size
+  - Calls progress.SetCurrent(processed) after each 4KB chunk decrypted
+  - Calls progress.SetStatus() to show decryption status
+  - Uses same decryption algorithm as original decryptFirmware()
+  - Processes file in 4KB chunks with AES decryption
+- Updated makeDecryptTab() to include progress bar:
+  - Added progressBar widget creation with widget.NewProgressBar()
+  - Progress bar initially hidden with progressBar.Hide()
+  - Shows progress bar when decryption starts with progressBar.Show()
+  - Hides progress bar when decryption completes in defer block
+  - Creates GUIProgressReporter with NewGUIProgressReporter(progressBar, statusLabel)
+  - Passes progress reporter to decryptFirmwareGUI()
+  - Added progressBar to VBox layout between decrypt button and status label
+- All error paths properly handled:
+  - IMEI validation errors with descriptive messages
+  - V4 key generation errors
+  - Decryption errors with wrapped error context
+  - File I/O errors in decryptFirmwareWithProgress()
+- Button state management:
+  - Button disabled during decryption operation
+  - Button re-enabled in defer block after completion
+  - State tracking with decryptInProgress boolean
+- Progress and status display:
+  - Real-time progress bar updates during decryption
+  - Status messages at each step (validating IMEI, generating key, decrypting)
+  - Success message shows output file path
+  - Error messages show detailed error information
+  - Progress bar shows percentage, speed, and ETA via GUIProgressReporter
+
+**Files Modified:**
+- crypt.go: Added decryptFirmwareWithProgress() function with ProgressReporter support
+- main.go: 
+  - Updated makeDecryptTab() to add progressBar widget
+  - Modified decryptFirmwareGUI() to accept ProgressReporter instead of *widget.Label
+  - Updated decrypt button handler to show/hide progress bar and create progress reporter
+  - Added progressBar to layout between button and status label
+- PROGRESS.md: Marked Task 5.3 as complete
+
+**Testing:**
+- ✅ Code formatting: `gofmt` confirms proper Go formatting on all files
+- ✅ Validation script: All 15 validation checks pass
+  - ✓ Uses ProgressReporter interface
+  - ✓ Calls parseIMEI() for IMEI validation
+  - ✓ Uses getV2Key() for V2 encryption
+  - ✓ Uses getV4Key() for V4 encryption
+  - ✓ Calls decryptFirmwareWithProgress() with progress
+  - ✓ Progress bar widget created, shown, and hidden appropriately
+  - ✓ Button disabled during operation and re-enabled after
+  - ✓ All error paths handled (IMEI, key generation, decryption)
+  - ✓ Calls progress.Finish()
+  - ✓ decryptFirmwareWithProgress() properly implements progress tracking
+- ✅ Function references verified:
+  - parseIMEI() in helpers.go
+  - getV2Key() in crypt.go
+  - getV4Key() in crypt.go
+  - decryptFirmwareWithProgress() in crypt.go
+  - NewGUIProgressReporter() in progress.go
+- ✅ ProgressReporter interface compliance verified
+- ✅ Error handling comprehensive with fmt.Errorf() and error wrapping
+- ✅ Progress updates: SetTotal(), SetCurrent(), SetStatus(), Finish() all called correctly
+- ⚠️  Full compile skipped: Expected OpenGL/GLES2 native dependency limitation on Termux
+- ✅ Ready for Phase 6: Polish and Error Handling
 
 

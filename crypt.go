@@ -127,3 +127,69 @@ func decryptFirmware(inFile, outFile string, key []byte, showProgress bool) erro
 
 	return nil
 }
+
+// decryptFirmwareWithProgress decrypts firmware with GUI progress reporting
+func decryptFirmwareWithProgress(inFile, outFile string, key []byte, progress ProgressReporter) error {
+	inf, err := os.Open(inFile)
+	if err != nil {
+		return err
+	}
+	defer inf.Close()
+
+	stat, err := inf.Stat()
+	if err != nil {
+		return err
+	}
+	length := stat.Size()
+
+	outf, err := os.Create(outFile)
+	if err != nil {
+		return err
+	}
+	defer outf.Close()
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return err
+	}
+
+	if length%16 != 0 {
+		return fmt.Errorf("invalid input block size")
+	}
+
+	chunks := length/4096 + 1
+	buf := make([]byte, 4096)
+	var processed int64
+
+	// Setup progress tracking
+	progress.SetTotal(length)
+	progress.SetCurrent(0)
+	progress.SetStatus("🔓 Decrypting firmware...")
+
+	for i := int64(0); i < chunks; i++ {
+		n, err := inf.Read(buf)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		decBlock := make([]byte, n)
+		for j := 0; j < n; j += 16 {
+			block.Decrypt(decBlock[j:j+16], buf[j:j+16])
+		}
+
+		if i == chunks-1 {
+			decBlock = pkcs7Unpad(decBlock[:n])
+		}
+
+		outf.Write(decBlock)
+		processed += int64(n)
+
+		// Update progress
+		progress.SetCurrent(processed)
+	}
+
+	return nil
+}

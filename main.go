@@ -375,7 +375,10 @@ func makeDecryptTab(window fyne.Window) *fyne.Container {
 		fileDialog.Show()
 	})
 
-	// Status label
+	// Progress widgets
+	progressBar := widget.NewProgressBar()
+	progressBar.Hide()
+
 	statusLabel := widget.NewLabel("")
 	statusLabel.Wrapping = fyne.TextWrapWord
 
@@ -449,16 +452,21 @@ func makeDecryptTab(window fyne.Window) *fyne.Container {
 		// Start decryption
 		decryptInProgress = true
 		decryptButton.Disable()
+		progressBar.Show()
 		statusLabel.SetText("⏳ Starting decryption...")
+
+		// Create progress reporter
+		progress := NewGUIProgressReporter(progressBar, statusLabel)
 
 		// Run decryption in goroutine to keep UI responsive
 		go func() {
 			defer func() {
 				decryptInProgress = false
 				decryptButton.Enable()
+				progressBar.Hide()
 			}()
 
-			err := decryptFirmwareGUI(model, region, imei, version, inputFile, outputFile, encVersion, statusLabel)
+			err := decryptFirmwareGUI(model, region, imei, version, inputFile, outputFile, encVersion, progress)
 
 			if err != nil {
 				statusLabel.SetText("❌ Error: " + err.Error())
@@ -486,14 +494,15 @@ func makeDecryptTab(window fyne.Window) *fyne.Container {
 		form,
 		decryptButton,
 		widget.NewSeparator(),
+		progressBar,
 		statusLabel,
 	)
 }
 
 // decryptFirmwareGUI implements the complete firmware decryption logic for GUI
-func decryptFirmwareGUI(model, region, imei, version, inputFile, outputFile, encVersion string, statusLabel *widget.Label) error {
+func decryptFirmwareGUI(model, region, imei, version, inputFile, outputFile, encVersion string, progress ProgressReporter) error {
 	// Step 1: Validate and parse IMEI
-	statusLabel.SetText("⏳ Validating IMEI...")
+	progress.SetStatus("⏳ Validating IMEI...")
 	effectiveIMEI, err := parseIMEI(imei, "", model, region)
 	if err != nil {
 		return fmt.Errorf("invalid IMEI: %w", err)
@@ -501,27 +510,29 @@ func decryptFirmwareGUI(model, region, imei, version, inputFile, outputFile, enc
 
 	// Step 2: Check if output file already exists
 	if _, err := os.Stat(outputFile); err == nil {
-		statusLabel.SetText("⚠️ Output file already exists, overwriting...")
+		progress.SetStatus("⚠️ Output file already exists, overwriting...")
 	}
 
 	// Step 3: Get decryption key based on version
 	var key []byte
 	if encVersion == "2" {
-		statusLabel.SetText("⏳ Generating V2 decryption key...")
+		progress.SetStatus("⏳ Generating V2 decryption key...")
 		key = getV2Key(version, model, region)
 	} else {
-		statusLabel.SetText("⏳ Generating V4 decryption key...")
+		progress.SetStatus("⏳ Generating V4 decryption key...")
 		key, err = getV4Key(version, model, region, effectiveIMEI)
 		if err != nil {
 			return fmt.Errorf("failed to generate V4 key: %w", err)
 		}
 	}
 
-	// Step 4: Decrypt the firmware
-	statusLabel.SetText("⏳ Decrypting firmware... This may take a while...")
-	if err := decryptFirmware(inputFile, outputFile, key, false); err != nil {
+	// Step 4: Decrypt the firmware with progress reporting
+	if err := decryptFirmwareWithProgress(inputFile, outputFile, key, progress); err != nil {
 		return fmt.Errorf("decryption failed: %w", err)
 	}
+
+	// Step 5: Mark as finished
+	progress.Finish()
 
 	return nil
 }
