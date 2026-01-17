@@ -22,8 +22,6 @@ var (
 	inFile   string
 	encVer   int
 	showMD5  bool
-	latest   bool
-	quiet    bool
 )
 
 func main() {
@@ -42,9 +40,6 @@ func main() {
 	switch args[0] {
 	case "checkupdate":
 		checkUpdate()
-	case "list":
-		parseListFlags(args[1:])
-		listFirmware()
 	case "download":
 		parseDownloadFlags(args[1:])
 		download()
@@ -63,7 +58,6 @@ func printUsage() {
 
 Usage:
   susgo -m <model> -r <region> checkupdate
-  susgo -m <model> -r <region> list [-l] [-q]
   susgo -m <model> -r <region> -i <IMEI/TAC> download [-O <dir> | -o <file>] [-v <ver>]
   susgo -m <model> -r <region> -i <IMEI/TAC> decrypt -v <ver> -I <input> -o <output>
 
@@ -75,13 +69,8 @@ Options:
 
 Commands:
   checkupdate  Check latest firmware version
-  list         List all available firmware versions
   download     Download firmware
   decrypt      Decrypt encrypted firmware
-
-List Options:
-  -l  Show only latest version
-  -q  Quiet mode (version only)
 
 Download Options:
   -O  Output directory
@@ -95,13 +84,6 @@ Decrypt Options:
   -o  Output file
   -V  Encryption version (2 or 4, default 4)
 `)
-}
-
-func parseListFlags(args []string) {
-	fs := flag.NewFlagSet("list", flag.ExitOnError)
-	fs.BoolVar(&latest, "l", false, "Show only latest")
-	fs.BoolVar(&quiet, "q", false, "Quiet mode")
-	fs.Parse(args)
 }
 
 func parseDownloadFlags(args []string) {
@@ -137,39 +119,6 @@ func checkUpdate() {
 		os.Exit(1)
 	}
 	fmt.Println(ver)
-}
-
-func listFirmware() {
-	info, err := getVersionInfo(model, region)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-
-	if quiet {
-		fmt.Println(info.Latest.Version)
-		if !latest {
-			for _, u := range info.Upgrade {
-				fmt.Println(u.Version)
-			}
-		}
-		return
-	}
-
-	fmt.Printf("Model: %s  Region: %s\n\n", model, region)
-	fmt.Println("Latest:")
-	fmt.Printf("  %s\n", info.Latest.Version)
-
-	if !latest && len(info.Upgrade) > 0 {
-		fmt.Println("\nAvailable Upgrades:")
-		for _, u := range info.Upgrade {
-			sizeStr := ""
-			if u.Size > 0 {
-				sizeStr = fmt.Sprintf(" (%.2f GB)", float64(u.Size)/(1024*1024*1024))
-			}
-			fmt.Printf("  %s%s\n", u.Version, sizeStr)
-		}
-	}
 }
 
 func download() {
