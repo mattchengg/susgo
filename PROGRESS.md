@@ -33,7 +33,7 @@
 ## Phase 4: Implement Download Tab
 
 - [x] Task 4.1: Create ProgressReporter interface
-- [ ] Task 4.2: Create makeDownloadTab() function
+- [x] Task 4.2: Create makeDownloadTab() function
 - [ ] Task 4.3: Implement download logic with GUI progress
 
 ---
@@ -206,5 +206,48 @@ Last Updated: 2026-01-17 - Task 2.1 Complete
 - ✅ Existing CLI functionality preserved: ProgressBar methods unchanged
 - ⚠️  Full compile skipped: Expected OpenGL/GLES2 native dependency limitation on Termux
 - ✅ Ready for Task 4.2: Create makeDownloadTab() function
+
+### 2025-01-21 - Task 4.2: Create makeDownloadTab() function (Completed)
+**What was done:**
+- Created makeDownloadTab() function in main.go with complete UI layout
+- Implemented input fields for all required parameters:
+  - Model entry field with placeholder "e.g., SM-S928B"
+  - Region entry field with placeholder "e.g., EUX"
+  - IMEI/TAC entry field with placeholder "8 digits (TAC) or 15 digits (full IMEI)"
+  - Version entry field with placeholder "Leave empty for latest"
+  - Output directory entry field with placeholder "/path/to/output/directory"
+- Created progress widgets:
+  - Progress bar widget (initially hidden)
+  - Status label with text wrapping for status messages
+- Implemented Download button with comprehensive validation:
+  - Checks for required fields (Model, Region, IMEI/TAC, Output Directory)
+  - Validates IMEI length (must be 8 or 15 digits)
+  - Prevents multiple simultaneous downloads with state tracking
+  - Disables button during download and re-enables after completion
+  - Shows/hides progress bar as needed
+- Integrated GUIProgressReporter from Task 4.1 for progress tracking
+- Created downloadFirmware() placeholder function:
+  - Validates IMEI using parseIMEI() helper from helpers.go
+  - Sets status messages via ProgressReporter interface
+  - Returns informative error for Task 4.3 implementation
+  - Includes TODO comments for Task 4.3 requirements
+- Updated main() function to add "Download" tab to tab container
+- Used proper Fyne widgets and container layouts (VBox, Form, etc.)
+- Implemented goroutine for async download to keep UI responsive
+- Added defer block for proper cleanup after download completes
+
+**Files Modified:**
+- main.go: Added makeDownloadTab() function, downloadFirmware() placeholder, and Download tab to main()
+
+**Testing:**
+- ✅ Code formatting: `gofmt -l` confirms proper Go formatting on all files
+- ✅ Syntax validation: go/parser confirms main.go syntax is valid
+- ✅ Package structure: `go list` confirms no Go-level import errors
+- ✅ Helper function integration: parseIMEI() and NewGUIProgressReporter() properly referenced
+- ✅ Tab container properly configured with both Check Update and Download tabs
+- ✅ All validation logic in place for user inputs
+- ✅ Progress reporting infrastructure ready for Task 4.3
+- ⚠️  Full compile skipped: Expected OpenGL/GLES2 native dependency limitation on Termux
+- ✅ Ready for Task 4.3: Implement download logic with GUI progress
 
 
