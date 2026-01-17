@@ -5,7 +5,19 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"fyne.io/fyne/v2/widget"
 )
+
+// ProgressReporter is a common interface for progress reporting
+// Used by both CLI (ProgressBar) and GUI (GUIProgressReporter)
+type ProgressReporter interface {
+	SetTotal(total int64)
+	SetCurrent(current int64)
+	Add(delta int64)
+	SetStatus(message string)
+	Finish()
+}
 
 type ProgressBar struct {
 	total      int64
@@ -30,6 +42,12 @@ func (p *ProgressBar) Start() {
 	go p.render()
 }
 
+func (p *ProgressBar) SetTotal(total int64) {
+	p.mu.Lock()
+	p.total = total
+	p.mu.Unlock()
+}
+
 func (p *ProgressBar) Add(n int64) {
 	p.mu.Lock()
 	p.current += n
@@ -40,6 +58,11 @@ func (p *ProgressBar) SetCurrent(n int64) {
 	p.mu.Lock()
 	p.current = n
 	p.mu.Unlock()
+}
+
+func (p *ProgressBar) SetStatus(message string) {
+	// CLI progress bar doesn't display status messages separately
+	// This is a no-op for CLI compatibility with ProgressReporter interface
 }
 
 func (p *ProgressBar) Finish() {
@@ -121,4 +144,75 @@ func formatSize(b int64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f%cB", float64(b)/float64(div), "KMGTPE"[exp])
+}
+
+// GUIProgressReporter implements ProgressReporter for Fyne GUI
+type GUIProgressReporter struct {
+	bar       *widget.ProgressBar
+	label     *widget.Label
+	total     int64
+	current   int64
+	startTime time.Time
+}
+
+func NewGUIProgressReporter(bar *widget.ProgressBar, label *widget.Label) *GUIProgressReporter {
+	return &GUIProgressReporter{
+		bar:       bar,
+		label:     label,
+		startTime: time.Now(),
+	}
+}
+
+func (g *GUIProgressReporter) SetTotal(total int64) {
+	g.total = total
+	g.bar.Max = float64(total)
+}
+
+func (g *GUIProgressReporter) SetCurrent(current int64) {
+	g.current = current
+	g.bar.SetValue(float64(current))
+	g.updateLabel()
+}
+
+func (g *GUIProgressReporter) Add(delta int64) {
+	g.current += delta
+	g.bar.SetValue(float64(g.current))
+	g.updateLabel()
+}
+
+func (g *GUIProgressReporter) SetStatus(message string) {
+	g.label.SetText(message)
+}
+
+func (g *GUIProgressReporter) Finish() {
+	g.bar.SetValue(float64(g.total))
+	g.label.SetText("✅ Complete!")
+}
+
+func (g *GUIProgressReporter) updateLabel() {
+	if g.total <= 0 {
+		return
+	}
+	pct := float64(g.current) / float64(g.total) * 100
+	elapsed := time.Since(g.startTime).Seconds()
+	speed := float64(g.current) / elapsed
+
+	var eta string
+	if speed > 0 {
+		remaining := float64(g.total-g.current) / speed
+		if remaining < 60 {
+			eta = fmt.Sprintf("%.0fs", remaining)
+		} else {
+			eta = fmt.Sprintf("%.0fm", remaining/60)
+		}
+	} else {
+		eta = "calculating..."
+	}
+
+	g.label.SetText(fmt.Sprintf("%.1f%% - %s/%s - %s/s - ETA: %s",
+		pct,
+		formatSize(g.current),
+		formatSize(g.total),
+		formatSize(int64(speed)),
+		eta))
 }
