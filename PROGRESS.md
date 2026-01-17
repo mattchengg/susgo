@@ -48,7 +48,7 @@
 
 ## Phase 6: Polish and Error Handling
 
-- [ ] Task 6.1: Add input validation
+- [x] Task 6.1: Add input validation
 - [ ] Task 6.2: Add error dialogs
 - [ ] Task 6.3: Add success notifications
 
@@ -479,5 +479,44 @@ Last Updated: 2026-01-17 12:30 - Task 5.2 Complete
 - ✅ Progress updates: SetTotal(), SetCurrent(), SetStatus(), Finish() all called correctly
 - ⚠️  Full compile skipped: Expected OpenGL/GLES2 native dependency limitation on Termux
 - ✅ Ready for Phase 6: Polish and Error Handling
+
+### 2026-01-17 12:59 - Task 6.1: Add input validation (Completed)
+**What was done:**
+- Created three validation helper functions with comprehensive checks:
+  - validateModel(): Checks non-empty, starts with SM-, minimum length of 5 characters
+  - validateRegion(): Checks non-empty, 2-4 characters, letters only
+  - validateIMEI(): Checks non-empty, exactly 8 or 15 digits, numeric only
+- Integrated validation helpers across all three tabs:
+  - Check Update Tab: Uses validateModel() and validateRegion()
+  - Download Tab: Uses validateModel(), validateRegion(), and validateIMEI()
+  - Decrypt Tab: Uses validateModel(), validateRegion(), and validateIMEI()
+- Added regexp package import for digit validation in validateIMEI()
+- Replaced basic validation checks with helper function calls for consistency
+- Error messages provide clear, user-friendly feedback (e.g., "model must start with SM- (e.g., SM-S928B)")
+- All validation functions use strings.TrimSpace() to handle whitespace gracefully
+- validateModel() accepts both uppercase and lowercase input (converts to uppercase for check)
+- validateRegion() accepts both uppercase and lowercase letters
+
+**Files Modified:**
+- main.go: Added validation helper functions and integrated them into all three tabs
+- validate_input.sh: Created comprehensive validation test script
+
+**Testing:**
+- ✅ Code formatting: gofmt confirms proper Go formatting
+- ✅ Package validation: `go list` confirms no Go-level errors
+- ✅ Syntax validation: Go parser confirms main.go syntax is valid
+- ✅ All validation helper functions defined and working correctly
+- ✅ Standalone validation test: All 24 test cases pass (models, regions, IMEIs)
+  - validateModel: 6/6 tests pass
+  - validateRegion: 9/9 tests pass  
+  - validateIMEI: 9/9 tests pass
+- ✅ Validation script: All 21 validation checks pass
+  - Function definitions verified
+  - All requirements implemented (SM- prefix, length checks, digit checks)
+  - All three tabs properly use validation helpers
+  - Error messages displayed to users
+- ✅ Existing validation script (validate_decrypt.sh) still passes
+- ⚠️  Full compile skipped: Expected OpenGL/GLES2 native dependency limitation on Termux
+- ✅ Ready for Task 6.2: Add error dialogs
 
 

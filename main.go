@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"fyne.io/fyne/v2"
@@ -14,6 +15,64 @@ import (
 	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
 )
+
+// Validation helper functions
+
+// validateModel validates the model field
+// Requirements: non-empty, starts with SM-
+func validateModel(model string) error {
+	model = strings.TrimSpace(model)
+	if model == "" {
+		return fmt.Errorf("model is required")
+	}
+	if !strings.HasPrefix(strings.ToUpper(model), "SM-") {
+		return fmt.Errorf("model must start with SM- (e.g., SM-S928B)")
+	}
+	if len(model) < 5 {
+		return fmt.Errorf("model seems too short (e.g., SM-S928B)")
+	}
+	return nil
+}
+
+// validateRegion validates the region field
+// Requirements: non-empty, 2-4 uppercase letters
+func validateRegion(region string) error {
+	region = strings.TrimSpace(region)
+	if region == "" {
+		return fmt.Errorf("region is required")
+	}
+	if len(region) < 2 || len(region) > 4 {
+		return fmt.Errorf("region must be 2-4 characters (e.g., EUX)")
+	}
+	// Check if all characters are letters
+	for _, char := range region {
+		if (char < 'A' || char > 'Z') && (char < 'a' || char > 'z') {
+			return fmt.Errorf("region must contain only letters (e.g., EUX)")
+		}
+	}
+	return nil
+}
+
+// validateIMEI validates the IMEI field
+// Requirements: exactly 8 or 15 numeric digits
+func validateIMEI(imei string) error {
+	imei = strings.TrimSpace(imei)
+	if imei == "" {
+		return fmt.Errorf("IMEI/TAC is required")
+	}
+	if len(imei) != 8 && len(imei) != 15 {
+		return fmt.Errorf("IMEI must be exactly 8 digits (TAC) or 15 digits (full IMEI)")
+	}
+	// Check if all characters are digits
+	matched, err := regexp.MatchString(`^\d+$`, imei)
+	if err != nil {
+		return fmt.Errorf("error validating IMEI: %w", err)
+	}
+	if !matched {
+		return fmt.Errorf("IMEI must contain only numeric digits")
+	}
+	return nil
+}
 
 func makeCheckUpdateTab() *fyne.Container {
 	// Create input fields
@@ -31,9 +90,14 @@ func makeCheckUpdateTab() *fyne.Container {
 		model := strings.TrimSpace(modelEntry.Text)
 		region := strings.TrimSpace(regionEntry.Text)
 
-		// Validation
-		if model == "" || region == "" {
-			resultLabel.SetText("❌ Error: Model and Region are required")
+		// Validation using helper functions
+		if err := validateModel(model); err != nil {
+			resultLabel.SetText("❌ Error: " + err.Error())
+			return
+		}
+
+		if err := validateRegion(region); err != nil {
+			resultLabel.SetText("❌ Error: " + err.Error())
 			return
 		}
 
@@ -109,25 +173,19 @@ func makeDownloadTab() *fyne.Container {
 		version := strings.TrimSpace(versionEntry.Text)
 		outputDir := strings.TrimSpace(outputDirEntry.Text)
 
-		// Validation
-		if model == "" {
-			statusLabel.SetText("❌ Error: Model is required")
+		// Validation using helper functions
+		if err := validateModel(model); err != nil {
+			statusLabel.SetText("❌ Error: " + err.Error())
 			return
 		}
 
-		if region == "" {
-			statusLabel.SetText("❌ Error: Region is required")
+		if err := validateRegion(region); err != nil {
+			statusLabel.SetText("❌ Error: " + err.Error())
 			return
 		}
 
-		if imei == "" {
-			statusLabel.SetText("❌ Error: IMEI/TAC is required")
-			return
-		}
-
-		// Validate IMEI length
-		if len(imei) != 8 && len(imei) != 15 {
-			statusLabel.SetText("❌ Error: IMEI must be 8 or 15 digits")
+		if err := validateIMEI(imei); err != nil {
+			statusLabel.SetText("❌ Error: " + err.Error())
 			return
 		}
 
@@ -401,25 +459,19 @@ func makeDecryptTab(window fyne.Window) *fyne.Container {
 		outputFile := strings.TrimSpace(outputFileEntry.Text)
 		encVersion := encVersionSelect.Selected
 
-		// Validation
-		if model == "" {
-			statusLabel.SetText("❌ Error: Model is required")
+		// Validation using helper functions
+		if err := validateModel(model); err != nil {
+			statusLabel.SetText("❌ Error: " + err.Error())
 			return
 		}
 
-		if region == "" {
-			statusLabel.SetText("❌ Error: Region is required")
+		if err := validateRegion(region); err != nil {
+			statusLabel.SetText("❌ Error: " + err.Error())
 			return
 		}
 
-		if imei == "" {
-			statusLabel.SetText("❌ Error: IMEI/TAC is required")
-			return
-		}
-
-		// Validate IMEI length
-		if len(imei) != 8 && len(imei) != 15 {
-			statusLabel.SetText("❌ Error: IMEI must be 8 or 15 digits")
+		if err := validateIMEI(imei); err != nil {
+			statusLabel.SetText("❌ Error: " + err.Error())
 			return
 		}
 
