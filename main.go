@@ -10,6 +10,8 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -305,7 +307,7 @@ func downloadFirmware(model, region, imei, version, outputDir string, progress P
 	return nil
 }
 
-func makeDecryptTab() *fyne.Container {
+func makeDecryptTab(window fyne.Window) *fyne.Container {
 	// Create input fields
 	modelEntry := widget.NewEntry()
 	modelEntry.SetPlaceHolder("e.g., SM-S928B")
@@ -328,6 +330,50 @@ func makeDecryptTab() *fyne.Container {
 	// Encryption version selector (default to 4)
 	encVersionSelect := widget.NewSelect([]string{"2", "4"}, nil)
 	encVersionSelect.SetSelected("4")
+
+	// Browse button for input file
+	browseInputButton := widget.NewButton("Browse...", func() {
+		// Create file open dialog with .enc2 and .enc4 filter
+		fileDialog := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
+			if err != nil {
+				dialog.ShowError(err, window)
+				return
+			}
+			if reader == nil {
+				return // User cancelled
+			}
+			defer reader.Close()
+
+			// Set the file path in the entry
+			inputFileEntry.SetText(reader.URI().Path())
+		}, window)
+
+		// Set file filter for .enc2 and .enc4 files
+		fileDialog.SetFilter(storage.NewExtensionFileFilter([]string{".enc2", ".enc4"}))
+		fileDialog.Show()
+	})
+
+	// Browse button for output file
+	browseOutputButton := widget.NewButton("Browse...", func() {
+		// Create file save dialog
+		fileDialog := dialog.NewFileSave(func(writer fyne.URIWriteCloser, err error) {
+			if err != nil {
+				dialog.ShowError(err, window)
+				return
+			}
+			if writer == nil {
+				return // User cancelled
+			}
+			defer writer.Close()
+
+			// Set the file path in the entry
+			outputFileEntry.SetText(writer.URI().Path())
+		}, window)
+
+		// Set default filename suggestion
+		fileDialog.SetFileName("firmware.zip")
+		fileDialog.Show()
+	})
 
 	// Status label
 	statusLabel := widget.NewLabel("")
@@ -428,8 +474,8 @@ func makeDecryptTab() *fyne.Container {
 		widget.NewFormItem("Region *", regionEntry),
 		widget.NewFormItem("IMEI/TAC *", imeiEntry),
 		widget.NewFormItem("Version *", versionEntry),
-		widget.NewFormItem("Input File *", inputFileEntry),
-		widget.NewFormItem("Output File *", outputFileEntry),
+		widget.NewFormItem("Input File *", container.NewBorder(nil, nil, nil, browseInputButton, inputFileEntry)),
+		widget.NewFormItem("Output File *", container.NewBorder(nil, nil, nil, browseOutputButton, outputFileEntry)),
 		widget.NewFormItem("Encryption Version *", encVersionSelect),
 	)
 
@@ -487,7 +533,7 @@ func main() {
 	tabs := container.NewAppTabs(
 		container.NewTabItem("Check Update", makeCheckUpdateTab()),
 		container.NewTabItem("Download", makeDownloadTab()),
-		container.NewTabItem("Decrypt", makeDecryptTab()),
+		container.NewTabItem("Decrypt", makeDecryptTab(myWindow)),
 	)
 
 	myWindow.SetContent(tabs)
