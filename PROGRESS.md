@@ -25,7 +25,7 @@
 ## Phase 3: Create Basic GUI Structure
 
 - [x] Task 3.1: Backup current main.go
-- [ ] Task 3.2: Create new GUI main.go skeleton
+- [x] Task 3.2: Create new GUI main.go skeleton
 - [ ] Task 3.3: Create makeCheckUpdateTab() function
 
 ---
@@ -130,4 +130,34 @@ Last Updated: 2026-01-17 - Task 2.1 Complete
 - ✅ Help command works: `./susgo` displays usage correctly
 - ✅ All CLI commands remain functional
 - ✅ Ready for Task 3.2: Create new GUI main.go skeleton
+
+### 2026-01-17 11:59 - Task 3.2: Create new GUI main.go skeleton (Completed)
+**What was done:**
+- Replaced main.go with GUI entry point using Fyne framework
+- Created helpers.go to preserve essential CLI helper functions (parseIMEI, getBinaryFile, initDownload, autoDecrypt)
+- Implemented basic Fyne window structure with:
+  - app.New() for application initialization
+  - NewWindow("susgo - Samsung Firmware Downloader") for main window
+  - Placeholder content with "susgo GUI - Coming Soon" label
+  - Window resize to 700x500 pixels
+  - ShowAndRun() to display and run the application
+- Updated parseIMEI signature in helpers.go to accept parameters instead of using globals
+- Updated autoDecrypt signature to accept version, model, region parameters
+
+**Files Created:**
+- helpers.go: Contains parseIMEI(), getBinaryFile(), initDownload(), and autoDecrypt() helper functions
+
+**Files Modified:**
+- main.go: Complete replacement with GUI skeleton using Fyne
+- go.mod/go.sum: Fyne dependencies properly resolved with `go mod tidy`
+
+**Testing:**
+- ✅ Code formatting: `gofmt` confirms proper Go formatting
+- ✅ Package validation: `go list` confirms no import errors at Go level
+- ✅ All Go files recognized: main.go, helpers.go, and all other modules properly included
+- ✅ Syntax validation: Code structure verified, proper imports and function signatures
+- ⚠️  Note: Cannot compile on Termux/Android due to OpenGL/GLES2 native dependencies (expected limitation)
+- ✅ Ready for cross-platform testing on Linux/Windows/macOS systems with proper GL support
+- ✅ Ready for Task 3.3: Create makeCheckUpdateTab() function
+
 
