@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"fyne.io/fyne/v2"
@@ -180,25 +183,126 @@ func makeDownloadTab() *fyne.Container {
 	)
 }
 
-// downloadFirmware is a placeholder that will be implemented in Task 4.3
+// downloadFirmware implements the complete firmware download logic
 func downloadFirmware(model, region, imei, version, outputDir string, progress ProgressReporter) error {
-	// Validate IMEI
+	// Step 1: Validate and parse IMEI
+	progress.SetStatus("Validating IMEI...")
 	effectiveIMEI, err := parseIMEI(imei, "", model, region)
 	if err != nil {
 		return fmt.Errorf("invalid IMEI: %w", err)
 	}
 
-	progress.SetStatus(fmt.Sprintf("Validating inputs (IMEI: %s)...", effectiveIMEI))
+	// Step 2: Create FUS client
+	progress.SetStatus("Connecting to Samsung servers...")
+	client := NewFUSClient()
 
-	// TODO: Task 4.3 will implement the actual download logic
-	// This includes:
-	// - Creating FUSClient
-	// - Getting version if not specified
-	// - Getting binary file info
-	// - Downloading the file with progress updates
-	// - Auto-decrypting if needed
+	// Step 3: Get version if not specified (fetch latest)
+	if version == "" {
+		progress.SetStatus("Fetching latest firmware version...")
+		ver, err := getLatestVersion(model, region)
+		if err != nil {
+			return fmt.Errorf("failed to get latest version: %w", err)
+		}
+		version = ver
+		progress.SetStatus(fmt.Sprintf("Latest version: %s", version))
+	}
 
-	return fmt.Errorf("download logic not yet implemented (Task 4.3)")
+	// Step 4: Get binary file information
+	progress.SetStatus("Retrieving firmware information...")
+	path, filename, size, err := getBinaryFile(client, version, model, region, effectiveIMEI)
+	if err != nil {
+		return fmt.Errorf("failed to get firmware info: %w", err)
+	}
+
+	// Step 5: Determine output file path
+	out := filepath.Join(outputDir, filename)
+
+	// Ensure output directory exists
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	progress.SetStatus(fmt.Sprintf("Firmware: %s (%.2f GB)", filename, float64(size)/(1024*1024*1024)))
+
+	// Step 6: Check if already decrypted
+	decFile := strings.TrimSuffix(strings.TrimSuffix(out, ".enc4"), ".enc2")
+	if _, err := os.Stat(decFile); err == nil {
+		progress.SetStatus("✅ File already decrypted!")
+		return nil
+	}
+
+	// Step 7: Check for existing file (resume support)
+	var offset int64
+	if info, err := os.Stat(out); err == nil {
+		offset = info.Size()
+		if offset == size {
+			progress.SetStatus("File already downloaded, decrypting...")
+			autoDecrypt(out, filename, version, model, region, effectiveIMEI)
+			progress.Finish()
+			return nil
+		}
+		progress.SetStatus(fmt.Sprintf("Resuming from %.1f%%", float64(offset)/float64(size)*100))
+	}
+
+	// Step 8: Initialize download session
+	progress.SetStatus("Initializing download...")
+	initDownload(client, filename)
+
+	// Step 9: Start download
+	resp, err := client.DownloadFile(path+filename, offset)
+	if err != nil {
+		return fmt.Errorf("failed to start download: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Step 10: Open output file for writing
+	flags := os.O_CREATE | os.O_WRONLY
+	if offset > 0 {
+		flags |= os.O_APPEND
+	} else {
+		flags |= os.O_TRUNC
+	}
+
+	fd, err := os.OpenFile(out, flags, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to create output file: %w", err)
+	}
+	defer fd.Close()
+
+	// Step 11: Setup progress tracking
+	progress.SetTotal(size)
+	progress.SetCurrent(offset)
+	progress.SetStatus("Downloading...")
+
+	// Step 12: Download file in chunks
+	buf := make([]byte, 32768) // 32 KB chunks
+
+	for {
+		n, err := resp.Body.Read(buf)
+		if n > 0 {
+			if _, writeErr := fd.Write(buf[:n]); writeErr != nil {
+				return fmt.Errorf("failed to write to file: %w", writeErr)
+			}
+			progress.Add(int64(n))
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("download error: %w", err)
+		}
+	}
+
+	// Step 13: Download complete
+	progress.SetStatus("Download complete! Decrypting...")
+
+	// Step 14: Auto-decrypt if applicable
+	autoDecrypt(out, filename, version, model, region, effectiveIMEI)
+
+	// Step 15: Mark as finished
+	progress.Finish()
+
+	return nil
 }
 
 func main() {
