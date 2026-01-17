@@ -10,38 +10,10 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build
+  build-fyne:
+    name: Build with fyne-cross
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - goos: linux
-            goarch: amd64
-          - goos: linux
-            goarch: arm64
-          - goos: linux
-            goarch: arm
-            goarm: "7"
-          - goos: linux
-            goarch: "386"
-          - goos: windows
-            goarch: amd64
-          - goos: windows
-            goarch: arm64
-          - goos: windows
-            goarch: "386"
-          - goos: darwin
-            goarch: amd64
-          - goos: darwin
-            goarch: arm64
-          - goos: freebsd
-            goarch: amd64
-          - goos: freebsd
-            goarch: arm64
-          - goos: android
-            goarch: arm64
-
+    
     steps:
       - uses: actions/checkout@v4
 
@@ -49,43 +21,75 @@ jobs:
         with:
           go-version: '1.25'
 
-      - name: Build
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          GOARM: ${{ matrix.goarm }}
-          CGO_ENABLED: 0
+      - name: Install fyne-cross
         run: |
-          NAME="sfgo-${{ matrix.goos }}-${{ matrix.goarch }}"
-          [ -n "${{ matrix.goarm }}" ] && NAME="${NAME}v${{ matrix.goarm }}"
-          [ "${{ matrix.goos }}" = "windows" ] && NAME="${NAME}.exe"
-          go build -trimpath -ldflags="-s -w" -o "${NAME}"
+          go install github.com/fyne-io/fyne-cross@latest
+          echo "$HOME/go/bin" >> $GITHUB_PATH
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: sfgo-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goarm && format('v{0}', matrix.goarm) || '' }}
-          path: sfgo-*
+      - name: Build for Linux
+        run: |
+          fyne-cross linux -arch=amd64,arm64 -app-id=com.mattchengg.sfgo -release
+          
+      - name: Build for Windows
+        run: |
+          fyne-cross windows -arch=amd64 -app-id=com.mattchengg.sfgo -release
 
-  release:
-    name: Release
-    needs: build
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-    
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          merge-multiple: true
+      - name: Build for macOS
+        run: |
+          fyne-cross darwin -arch=amd64,arm64 -app-id=com.mattchengg.sfgo -release
+
+      - name: Organize artifacts
+        run: |
+          mkdir -p artifacts
+          # Linux binaries
+          if [ -f fyne-cross/dist/linux-amd64/sfgo ]; then
+            cp fyne-cross/dist/linux-amd64/sfgo artifacts/sfgo-linux-amd64
+          fi
+          if [ -f fyne-cross/dist/linux-arm64/sfgo ]; then
+            cp fyne-cross/dist/linux-arm64/sfgo artifacts/sfgo-linux-arm64
+          fi
+          # Windows binaries
+          if [ -f fyne-cross/dist/windows-amd64/sfgo.exe ]; then
+            cp fyne-cross/dist/windows-amd64/sfgo.exe artifacts/sfgo-windows-amd64.exe
+          fi
+          # macOS binaries
+          if [ -f fyne-cross/dist/darwin-amd64/sfgo.app/Contents/MacOS/sfgo ]; then
+            cp fyne-cross/dist/darwin-amd64/sfgo.app/Contents/MacOS/sfgo artifacts/sfgo-darwin-amd64
+          fi
+          if [ -f fyne-cross/dist/darwin-arm64/sfgo.app/Contents/MacOS/sfgo ]; then
+            cp fyne-cross/dist/darwin-arm64/sfgo.app/Contents/MacOS/sfgo artifacts/sfgo-darwin-arm64
+          fi
+          # Create macOS app bundles as tar.gz
+          if [ -d fyne-cross/dist/darwin-amd64/sfgo.app ]; then
+            cd fyne-cross/dist/darwin-amd64 && tar czf ../../../artifacts/sfgo-darwin-amd64.app.tar.gz sfgo.app && cd ../../..
+          fi
+          if [ -d fyne-cross/dist/darwin-arm64/sfgo.app ]; then
+            cd fyne-cross/dist/darwin-arm64 && tar czf ../../../artifacts/sfgo-darwin-arm64.app.tar.gz sfgo.app && cd ../../..
+          fi
 
       - name: Create checksums
         run: |
           cd artifacts
           sha256sum sfgo-* > checksums.txt
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sfgo-binaries
+          path: artifacts/*
+
+  release:
+    name: Release
+    needs: build-fyne
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: sfgo-binaries
+          path: artifacts
+
       - uses: softprops/action-gh-release@v2
         with:
-          files: |
-            artifacts/sfgo-*
-            artifacts/checksums.txt
+          files: artifacts/*
           generate_release_notes: true
