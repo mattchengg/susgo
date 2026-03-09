@@ -125,6 +125,32 @@ func binaryInit(filename, nonce string) string {
 	return string(data)
 }
 
+// binaryInformAuto builds a request using ACCESS_MODE 5 (no IMEI needed).
+// The server returns the latest firmware info automatically.
+func binaryInformAuto(model, region string) string {
+	elements := []FUSElement{
+		{XMLName: xml.Name{Local: "ACCESS_MODE"}, Data: "5"},
+		{XMLName: xml.Name{Local: "BINARY_NATURE"}, Data: "1"},
+		{XMLName: xml.Name{Local: "CLIENT_PRODUCT"}, Data: "Smart Switch"},
+		{XMLName: xml.Name{Local: "CLIENT_VERSION"}, Data: "5.0.0.0"},
+		{XMLName: xml.Name{Local: "DEVICE_FW_VERSION"}, Data: "................"},
+		{XMLName: xml.Name{Local: "DEVICE_LOCAL_CODE"}, Data: region},
+		{XMLName: xml.Name{Local: "DEVICE_AID_CODE"}, Data: region},
+		{XMLName: xml.Name{Local: "DEVICE_CC_CODE"}, Data: "DE"},
+		{XMLName: xml.Name{Local: "DEVICE_MODEL_NAME"}, Data: model},
+		{XMLName: xml.Name{Local: "LOGIC_CHECK"}, Data: "................"},
+		{XMLName: xml.Name{Local: "DEVICE_INITIALIZE"}, Data: "2"},
+	}
+
+	msg := FUSMsg{
+		FUSHdr:  FUSHdr{ProtoVer: "1.0"},
+		FUSBody: FUSBody{Put: FUSPut{Elements: elements}},
+	}
+
+	data, _ := xml.Marshal(msg)
+	return string(data)
+}
+
 func getCheckInput(filename string) string {
 	base := filename
 	for i := len(filename) - 1; i >= 0; i-- {

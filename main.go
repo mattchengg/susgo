@@ -68,13 +68,13 @@ func printUsage() {
 Usage:
   susgo -m <model> -r <region> checkupdate
   susgo -m <model> -r <region> list [-l] [-q]
-  susgo -m <model> -r <region> -i <IMEI/TAC> download [-O <dir> | -o <file>] [-v <ver>] [-j <threads>]
+  susgo -m <model> -r <region> download [-i <IMEI/TAC>] [-O <dir> | -o <file>] [-v <ver>] [-j <threads>]
   susgo -m <model> -r <region> -i <IMEI/TAC> decrypt -v <ver> -I <input> -o <output>
 
 Options:
   -m  Device model (e.g., SM-S928B)
   -r  Region code (e.g., EUX, XAR)
-  -i  IMEI (15 digits) or TAC (8 digits)
+  -i  IMEI (15 digits) or TAC (8 digits), optional for download
   -s  Serial Number (for devices without IMEI)
 
 Commands:
@@ -175,15 +175,21 @@ func listFirmware() {
 }
 
 func download() {
-	effectiveIMEI, err := parseIMEI()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+	// IMEI is optional — without it, uses samloader-rs auto mode (ACCESS_MODE 5)
+	var effectiveIMEI string
+	if imei != "" || serial != "" {
+		var err error
+		effectiveIMEI, err = parseIMEI()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	client := NewFUSClient()
 
-	if version == "" {
+	// With IMEI mode, fetch version from FOTA if not specified
+	if effectiveIMEI != "" && version == "" {
 		ver, err := getLatestVersion(model, region)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -192,11 +198,12 @@ func download() {
 		version = ver
 	}
 
-	path, filename, size, key, err := getBinaryFile(client, version, model, region, effectiveIMEI)
+	path, filename, size, key, fwVer, err := getBinaryFile(client, version, model, region, effectiveIMEI)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
+	version = fwVer
 
 	// Output name strips encryption suffix (decryption happens on-the-fly)
 	defaultName := strings.TrimSuffix(strings.TrimSuffix(filename, ".enc4"), ".enc2")
@@ -382,39 +389,51 @@ func parseIMEI() (string, error) {
 	return "", fmt.Errorf("IMEI (-i) or Serial (-s) required")
 }
 
-func getBinaryFile(client *FUSClient, fw, model, region, imei string) (path, filename string, size int64, key []byte, err error) {
-	req := binaryInform(fw, model, region, imei, client.Nonce)
+func getBinaryFile(client *FUSClient, fw, model, region, imei string) (path, filename string, size int64, key []byte, fwVersion string, err error) {
+	var req string
+	if imei == "" {
+		// Auto mode: ACCESS_MODE 5, no IMEI needed (samloader-rs approach)
+		req = binaryInformAuto(model, region)
+	} else {
+		req = binaryInform(fw, model, region, imei, client.Nonce)
+	}
+
 	resp, err := client.MakeReq("NF_DownloadBinaryInform.do", req)
 	if err != nil {
-		return "", "", 0, nil, err
+		return "", "", 0, nil, "", err
 	}
 
 	var fusResp FUSMsgResponse
 	if err := xml.Unmarshal([]byte(resp), &fusResp); err != nil {
-		return "", "", 0, nil, err
+		return "", "", 0, nil, "", err
 	}
 
 	if fusResp.Body.Results.Status != 200 {
-		return "", "", 0, nil, fmt.Errorf("status %d", fusResp.Body.Results.Status)
+		return "", "", 0, nil, "", fmt.Errorf("status %d", fusResp.Body.Results.Status)
 	}
 
 	filename = fusResp.Body.Put.BinaryName.Data
 	if filename == "" {
-		return "", "", 0, nil, fmt.Errorf("no firmware found")
+		return "", "", 0, nil, "", fmt.Errorf("no firmware found")
+	}
+
+	// Use server-reported version
+	fwVersion = fusResp.Body.Results.LatestFWVersion.Data
+	if fwVersion == "" {
+		fwVersion = fw
 	}
 
 	// Compute decryption key from server response
 	if strings.HasSuffix(filename, ".enc2") {
-		key = getV2Key(fw, model, region)
+		key = getV2Key(fwVersion, model, region)
 	} else {
-		fwVer := fusResp.Body.Results.LatestFWVersion.Data
 		logicVal := fusResp.Body.Put.LogicValueFactory.Data
-		decKey := getLogicCheck(fwVer, logicVal)
+		decKey := getLogicCheck(fwVersion, logicVal)
 		hash := md5.Sum([]byte(decKey))
 		key = hash[:]
 	}
 
-	return fusResp.Body.Put.ModelPath.Data, filename, fusResp.Body.Put.BinaryByteSize.Data, key, nil
+	return fusResp.Body.Put.ModelPath.Data, filename, fusResp.Body.Put.BinaryByteSize.Data, key, fwVersion, nil
 }
 
 func initDownload(client *FUSClient, filename string) {
