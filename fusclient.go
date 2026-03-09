@@ -24,7 +24,7 @@ func NewFUSClient() *FUSClient {
 }
 
 func (c *FUSClient) MakeReq(path, data string) (string, error) {
-	authv := fmt.Sprintf(`FUS nonce="", signature="%s", nc="", type="", realm="", newauth="1"`, c.Auth)
+	authv := fmt.Sprintf(`FUS nonce="%s", signature="%s", nc="", type="", realm="", newauth="1"`, c.EncNonce, c.Auth)
 
 	req, err := http.NewRequest("POST", "https://neofussvr.sslcs.cdngc.net/"+path, strings.NewReader(data))
 	if err != nil {
@@ -76,6 +76,12 @@ func (c *FUSClient) MakeReq(path, data string) (string, error) {
 }
 
 func (c *FUSClient) DownloadFile(filename string, start int64) (*http.Response, error) {
+	return c.DownloadFileRange(filename, start, -1)
+}
+
+// DownloadFileRange downloads a file with optional byte range.
+// end=-1 means download to end of file.
+func (c *FUSClient) DownloadFileRange(filename string, start, end int64) (*http.Response, error) {
 	authv := fmt.Sprintf(`FUS nonce="%s", signature="%s", nc="", type="", realm="", newauth="1"`, c.EncNonce, c.Auth)
 
 	url := "http://cloud-neofussvr.samsungmobile.com/NF_DownloadBinaryForMass.do?file=" + filename
@@ -87,7 +93,9 @@ func (c *FUSClient) DownloadFile(filename string, start int64) (*http.Response, 
 
 	req.Header.Set("Authorization", authv)
 	req.Header.Set("User-Agent", "Kies2.0_FUS")
-	if start > 0 {
+	if end >= 0 {
+		req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", start, end))
+	} else if start > 0 {
 		req.Header.Set("Range", fmt.Sprintf("bytes=%d-", start))
 	}
 

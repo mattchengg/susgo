@@ -1,7 +1,8 @@
 package main
 
 import (
-	"encoding/base64"
+	"crypto/aes"
+	"crypto/md5"
 	"encoding/xml"
 	"flag"
 	"fmt"
@@ -9,21 +10,24 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 )
 
 var (
-	model    string
-	region   string
-	imei     string
-	serial   string
-	version  string
-	outDir   string
-	outFile  string
-	inFile   string
-	encVer   int
-	showMD5  bool
-	latest   bool
-	quiet    bool
+	model   string
+	region  string
+	imei    string
+	serial  string
+	version string
+	outDir  string
+	outFile string
+	inFile  string
+	encVer  int
+	threads int
+	showMD5 bool
+	latest  bool
+	quiet   bool
 )
 
 func main() {
@@ -64,7 +68,7 @@ func printUsage() {
 Usage:
   susgo -m <model> -r <region> checkupdate
   susgo -m <model> -r <region> list [-l] [-q]
-  susgo -m <model> -r <region> -i <IMEI/TAC> download [-O <dir> | -o <file>] [-v <ver>]
+  susgo -m <model> -r <region> -i <IMEI/TAC> download [-O <dir> | -o <file>] [-v <ver>] [-j <threads>]
   susgo -m <model> -r <region> -i <IMEI/TAC> decrypt -v <ver> -I <input> -o <output>
 
 Options:
@@ -76,7 +80,7 @@ Options:
 Commands:
   checkupdate  Check latest firmware version
   list         List all available firmware versions
-  download     Download firmware
+  download     Download and decrypt firmware (parallel connections)
   decrypt      Decrypt encrypted firmware
 
 List Options:
@@ -84,10 +88,11 @@ List Options:
   -q  Quiet mode (version only)
 
 Download Options:
-  -O  Output directory
+  -O  Output directory (default: current directory)
   -o  Output file
-  -v  Firmware version (optional)
-  -M  Show MD5 hash
+  -v  Firmware version (optional, defaults to latest)
+  -j  Number of parallel connections (default: 8)
+  -M  Show MD5 hash after download
 
 Decrypt Options:
   -v  Firmware version
@@ -109,12 +114,9 @@ func parseDownloadFlags(args []string) {
 	fs.StringVar(&version, "v", "", "Firmware version")
 	fs.StringVar(&outDir, "O", "", "Output directory")
 	fs.StringVar(&outFile, "o", "", "Output file")
+	fs.IntVar(&threads, "j", 8, "Number of parallel connections")
 	fs.BoolVar(&showMD5, "M", false, "Show MD5 hash")
 	fs.Parse(args)
-	if outDir == "" && outFile == "" {
-		fmt.Println("Error: -O or -o required")
-		os.Exit(1)
-	}
 }
 
 func parseDecryptFlags(args []string) {
@@ -190,95 +192,177 @@ func download() {
 		version = ver
 	}
 
-	path, filename, size, err := getBinaryFile(client, version, model, region, effectiveIMEI)
+	path, filename, size, key, err := getBinaryFile(client, version, model, region, effectiveIMEI)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
-	out := outFile
-	if out == "" {
-		out = filepath.Join(outDir, filename)
-	} else if info, err := os.Stat(out); err == nil && info.IsDir() {
-		out = filepath.Join(out, filename)
+	// Output name strips encryption suffix (decryption happens on-the-fly)
+	defaultName := strings.TrimSuffix(strings.TrimSuffix(filename, ".enc4"), ".enc2")
+
+	var out string
+	switch {
+	case outFile != "":
+		out = outFile
+	case outDir != "":
+		out = filepath.Join(outDir, defaultName)
+	default:
+		out = defaultName
 	}
 
-	fmt.Printf("Device: %s | CSC: %s\nFW: %s\nSize: %.3f GB\nPath: %s\n",
-		model, region, version, float64(size)/(1024*1024*1024), out)
+	fmt.Printf("Firmware Version: %s\n", version)
+	fmt.Printf("Downloading %s to %s\n", filename, out)
 
-	decFile := strings.TrimSuffix(strings.TrimSuffix(out, ".enc4"), ".enc2")
-	if _, err := os.Stat(decFile); err == nil {
-		fmt.Println("Already decrypted!")
+	if _, err := os.Stat(out); err == nil {
+		fmt.Printf("%s already exists, skipping.\n", out)
 		return
 	}
 
-	var offset int64
-	if info, err := os.Stat(out); err == nil {
-		offset = info.Size()
-		if offset == size {
-			fmt.Println("Downloaded, decrypting...")
-			autoDecrypt(out, filename, effectiveIMEI)
-			return
-		}
-		fmt.Printf("Resuming from %.1f%%\n", float64(offset)/float64(size)*100)
-	}
-
-	initDownload(client, filename)
-	resp, err := client.DownloadFile(path+filename, offset)
+	// Pre-allocate output file
+	f, err := os.OpenFile(out, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0644)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
-	defer resp.Body.Close()
-
-	if showMD5 {
-		if h := resp.Header.Get("Content-MD5"); h != "" {
-			if d, err := base64.StdEncoding.DecodeString(h); err == nil {
-				fmt.Printf("MD5: %x\n", d)
-			}
-		}
-	}
-
-	flags := os.O_CREATE | os.O_WRONLY
-	if offset > 0 {
-		flags |= os.O_APPEND
-	} else {
-		flags |= os.O_TRUNC
-	}
-
-	fd, err := os.OpenFile(out, flags, 0644)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	if err := f.Truncate(size); err != nil {
+		f.Close()
+		os.Remove(out)
+		fmt.Fprintf(os.Stderr, "Error: cannot pre-allocate file: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Create async progress bar
+	// Adjust thread count for small files
+	numThreads := int64(threads)
+	if numThreads < 1 {
+		numThreads = 1
+	}
+	if size/16 < numThreads {
+		numThreads = size / 16
+	}
+	if numThreads < 1 {
+		numThreads = 1
+	}
+	// Chunk size aligned to 16-byte AES block boundary
+	chunkSize := (size/numThreads/16 + 1) * 16
+
 	bar := NewProgressBar(size)
-	bar.SetCurrent(offset)
 	bar.Start()
 
-	buf := make([]byte, 32768)
+	initDownload(client, filename)
 
-	for {
-		n, err := resp.Body.Read(buf)
-		if n > 0 {
-			fd.Write(buf[:n])
-			bar.Add(int64(n))
-		}
-		if err == io.EOF {
+	var wg sync.WaitGroup
+	var dlErr error
+	var errOnce sync.Once
+
+	for i := int64(0); i < numThreads; i++ {
+		start := i * chunkSize
+		if start >= size {
 			break
 		}
+
+		isLast := i == numThreads-1
+		var end int64
+		if isLast {
+			end = -1
+		} else {
+			end = start + chunkSize - 1
+		}
+
+		resp, err := client.DownloadFileRange(path+filename, start, end)
 		if err != nil {
-			fd.Close()
+			f.Close()
+			os.Remove(out)
 			bar.Finish()
-			fmt.Fprintf(os.Stderr, "\nError: %v\n", err)
+			fmt.Fprintf(os.Stderr, "\nError: download request failed: %v\n", err)
 			os.Exit(1)
 		}
+
+		writeOffset := start
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			defer resp.Body.Close()
+
+			block, _ := aes.NewCipher(key)
+			readBuf := make([]byte, 32768)
+			dataBuf := make([]byte, 0, 32768+16)
+			pos := writeOffset
+
+			for {
+				n, readErr := resp.Body.Read(readBuf)
+				if n > 0 {
+					bar.Add(int64(n))
+					dataBuf = append(dataBuf, readBuf[:n]...)
+
+					// Decrypt complete 16-byte AES blocks in-place
+					aligned := (len(dataBuf) / 16) * 16
+					for j := 0; j < aligned; j += 16 {
+						block.Decrypt(dataBuf[j:j+16], dataBuf[j:j+16])
+					}
+
+					if aligned > 0 {
+						if _, err := f.WriteAt(dataBuf[:aligned], pos); err != nil {
+							errOnce.Do(func() { dlErr = err })
+							return
+						}
+						pos += int64(aligned)
+					}
+
+					// Keep incomplete block remainder for next iteration
+					remainder := len(dataBuf) - aligned
+					if remainder > 0 {
+						copy(dataBuf[:remainder], dataBuf[aligned:])
+					}
+					dataBuf = dataBuf[:remainder]
+				}
+
+				if readErr == io.EOF {
+					break
+				}
+				if readErr != nil {
+					errOnce.Do(func() { dlErr = readErr })
+					return
+				}
+			}
+		}()
+
+		// Small delay between requests to avoid overwhelming the server
+		time.Sleep(100 * time.Millisecond)
 	}
-	fd.Close()
+
+	wg.Wait()
+
+	if dlErr != nil {
+		f.Close()
+		os.Remove(out)
+		bar.Finish()
+		fmt.Fprintf(os.Stderr, "\nDownload failed: %v\n", dlErr)
+		os.Exit(1)
+	}
+
+	// Remove PKCS7 padding
+	lastByte := make([]byte, 1)
+	if _, err := f.ReadAt(lastByte, size-1); err == nil {
+		if lastByte[0] > 0 && lastByte[0] <= 16 {
+			f.Truncate(size - int64(lastByte[0]))
+		}
+	}
+
+	f.Close()
 	bar.Finish()
+
+	if showMD5 {
+		hash := md5.New()
+		outFd, err := os.Open(out)
+		if err == nil {
+			io.Copy(hash, outFd)
+			outFd.Close()
+			fmt.Printf("MD5: %x\n", hash.Sum(nil))
+		}
+	}
+
 	fmt.Println("Done.")
-	autoDecrypt(out, filename, effectiveIMEI)
 }
 
 func parseIMEI() (string, error) {
@@ -298,61 +382,44 @@ func parseIMEI() (string, error) {
 	return "", fmt.Errorf("IMEI (-i) or Serial (-s) required")
 }
 
-func getBinaryFile(client *FUSClient, fw, model, region, imei string) (path, filename string, size int64, err error) {
+func getBinaryFile(client *FUSClient, fw, model, region, imei string) (path, filename string, size int64, key []byte, err error) {
 	req := binaryInform(fw, model, region, imei, client.Nonce)
 	resp, err := client.MakeReq("NF_DownloadBinaryInform.do", req)
 	if err != nil {
-		return "", "", 0, err
+		return "", "", 0, nil, err
 	}
 
 	var fusResp FUSMsgResponse
 	if err := xml.Unmarshal([]byte(resp), &fusResp); err != nil {
-		return "", "", 0, err
+		return "", "", 0, nil, err
 	}
 
 	if fusResp.Body.Results.Status != 200 {
-		return "", "", 0, fmt.Errorf("status %d", fusResp.Body.Results.Status)
+		return "", "", 0, nil, fmt.Errorf("status %d", fusResp.Body.Results.Status)
 	}
 
 	filename = fusResp.Body.Put.BinaryName.Data
 	if filename == "" {
-		return "", "", 0, fmt.Errorf("no firmware found")
+		return "", "", 0, nil, fmt.Errorf("no firmware found")
 	}
 
-	return fusResp.Body.Put.ModelPath.Data, filename, fusResp.Body.Put.BinaryByteSize.Data, nil
+	// Compute decryption key from server response
+	if strings.HasSuffix(filename, ".enc2") {
+		key = getV2Key(fw, model, region)
+	} else {
+		fwVer := fusResp.Body.Results.LatestFWVersion.Data
+		logicVal := fusResp.Body.Put.LogicValueFactory.Data
+		decKey := getLogicCheck(fwVer, logicVal)
+		hash := md5.Sum([]byte(decKey))
+		key = hash[:]
+	}
+
+	return fusResp.Body.Put.ModelPath.Data, filename, fusResp.Body.Put.BinaryByteSize.Data, key, nil
 }
 
 func initDownload(client *FUSClient, filename string) {
 	req := binaryInit(filename, client.Nonce)
 	client.MakeReq("NF_DownloadBinaryInitForMass.do", req)
-}
-
-func autoDecrypt(out, filename, effectiveIMEI string) {
-	dec := strings.TrimSuffix(strings.TrimSuffix(out, ".enc4"), ".enc2")
-	if _, err := os.Stat(dec); err == nil {
-		fmt.Printf("%s exists\n", dec)
-		return
-	}
-
-	fmt.Print("Decrypting...")
-	var key []byte
-	var err error
-	if strings.HasSuffix(filename, ".enc2") {
-		key = getV2Key(version, model, region)
-	} else {
-		key, err = getV4Key(version, model, region, effectiveIMEI)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Key error: %v\n", err)
-			return
-		}
-	}
-
-	if err := decryptFirmware(out, dec, key, false); err != nil {
-		fmt.Fprintf(os.Stderr, "Decrypt error: %v\n", err)
-		return
-	}
-	os.Remove(out)
-	fmt.Println(" Done.")
 }
 
 func decrypt() {
